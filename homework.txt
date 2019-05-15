@@ -1,0 +1,10 @@
+zadanie domowe
+- z szescianow zbudowac labirynt o rozmiarze 7 na 7 blokow ze sciezka w srodku
+- mozliwosc chodzenia bohaterem po labiryncie -> tylko x, z
+- poprawnie rotacja kamery / labiryntu
+- bohater moze wchodzic na sciany
+- wyslac na maila
+
+
+
+- tekstury do ludzikow miec na nastepne zajecia
