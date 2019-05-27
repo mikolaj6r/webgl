@@ -107,8 +107,8 @@ function main() {
     varying vec2 vTexUV;
     uniform sampler2D uSampler;
     void main(){
-        //gl_FragColor = vec4(vColor, 1.0);
-        gl_FragColor = texture2D(uSampler, vTexUV);
+        gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0);
+        //gl_FragColor = texture2D(uSampler, vTexUV);
     }
   `;
 
@@ -128,126 +128,78 @@ function main() {
     },
   };
 
+var manPosition = [];
+let rstart = 0;
+let rmax = 5;
+let step = 0.1
 
-  const manPosition = [
-    //shirt down back
-    0, 0, 0, 4, 0, 0, 4, 2, 0,
-    0, 0, 0, 4, 2, 0, 0, 2, 0,
+for(l=0; l<rmax; l+= step){
+y = [ rstart+l, rstart+l+step ];
+r = [ rstart+l, rstart+l+step  ]
+let delta = 360/6;
+  for(i=0; i<6; i++){
+      var alfa1 = i * delta;
+      var alfa2 = (i+1)*delta;
+      
+      let x1top = r[0] * Math.cos(alfa1*Math.PI/180);
+      let z1top = r[0] * Math.sin(alfa1*Math.PI/180);
+      
+      let x2top = r[0] * Math.cos(alfa2*Math.PI/180);
+      let z2top = r[0] * Math.sin(alfa2*Math.PI/180);
 
-    //shirt down front
-    0, 0, 1.5, 4, 0, 1.5, 4, 2, 1.5,
-    0, 0, 1.5, 4, 2, 1.5, 0, 2, 1.5,
-
-    //shirt down front
-    4, 0, 0, 4, 0, 1.5, 4, 2, 1.5,
-    4, 0, 0, 4, 2, 1.5, 4, 2, 0,
-
-    //shirt down front
-    0, 0, 0, 0, 0, 1.5, 0, 2, 1.5,
-    0, 0, 0, 0, 2, 1.5, 0, 2, 0,
-
-    //shirt top back
-    -4, 0, 0, -4, -1, 0, 8, -1, 0,
-    -4, 0, 0, 8, -1, 0, 8, 0, 0,
-
-    //shirt top front
-    -4, 0, 1.5, -4, -1, 1.5, 8, -1, 1.5,
-    -4, 0, 1.5, 8, -1, 1.5, 8, 0, 1.5,
-
-    //shirt top front
-    8, -1, 0, 8, -1, 1.5, 8, 0, 1.5,
-    8, -1, 0, 8, 0, 1.5, 8, 0, 0,
-
-    //shirt top front
-    -4, -1, 0, -4, -1, 1.5, -4, 0, 1.5,
-    -4, -1, 0, -4, 0, 1.5, -4, 0, 0,
-
-
-    //skin head back
-    0, -6, 0, 4, -6, 0, 4, -2, 0,
-    0, -6, 0, 4, -2, 0, 0, -2, 0,
-
-    //skin head front
-    0, -6, 3, 4, -6, 3, 4, -2, 3,
-    0, -6, 3, 4, -2, 3, 0, -2, 3,
-
-    //skin head back
-    4, -6, 0, 4, -6, 3, 4, -2, 3,
-    4, -6, 0, 4, -2, 3, 4, -2, 0,
-    //skin head back
-    0, -6, 0, 0, -6, 3, 0, -2, 3,
-    0, -6, 0, 0, -2, 3, 0, -2, 0,
+      let x1bottom= r[1] * Math.cos(alfa1*Math.PI/180);
+      let z1bottom = r[1] * Math.sin(alfa1*Math.PI/180);
+      
+      let x2bottom = r[1] * Math.cos(alfa2*Math.PI/180);
+      let z2bottom = r[1] * Math.sin(alfa2*Math.PI/180);
+  
+      
+      manPosition = manPosition.concat([x1top, y[0], z1top]); //1 top
+      manPosition = manPosition.concat([x2top, y[0], z2top]); //2 top
+      manPosition = manPosition.concat([x1bottom, y[1], z1bottom]); //4 bottom
+      
+      manPosition = manPosition.concat([x2top, y[0], z2top]); //1 top
+      manPosition = manPosition.concat([x1bottom, y[1], z1bottom]); //4 bottom
+      manPosition = manPosition.concat([x2bottom, y[1], z2bottom]); //3 bottom
 
 
-    //skin neck back
-    1, -2, 0, 3, -2, 0, 3, -1, 0,
-    1, -2, 0, 3, -1, 0, 1, -1, 0,
 
-    //skin neck back
-    1, -2, 1, 3, -2, 1, 3, -1, 1,
-    1, -2, 1, 3, -1, 1, 1, -1, 1,
-
-    //skin neck back
-    3, -2, 0, 3, -2, 1.5, 3, -1, 1.5,
-    3, -2, 0, 3, -1, 1.5, 3, -1, 0,
-
-    //skin neck back
-    1, -2, 0, 1, -2, 1.5, 1, -1, 1.5,
-    1, -2, 0, 1, -1, 1.5, 1, -1, 0,
-
-
-    //skin leg right back
-    0.5, 8, 0, 1.5, 8, 0, 1.5, 11, 0,
-    0.5, 8, 0, 1.5, 11, 0, 0.5, 11, 0,
-
-    //skin leg right back
-    0.5, 8, 1, 1.5, 8, 1, 1.5, 11, 1,
-    0.5, 8, 1, 1.5, 11, 1, 0.5, 11, 1,
-
-    //skin leg right back
-    1.5, 8, 0, 1.5, 8, 1.5, 1.5, 11, 1.5,
-    1.5, 8, 0, 1.5, 11, 1.5, 1.5, 11, 0,
-
-    //skin leg right back
-    0.5, 8, 0, 0.5, 8, 1.5, 0.5, 11, 1.5,
-    0.5, 8, 0, 0.5, 11, 1.5, 0.5, 11, 0,
-
-
-    //skin leg left back
-    2.5, 8, 0, 3.5, 8, 0, 3.5, 11, 0,
-    2.5, 8, 0, 3.5, 11, 0, 2.5, 11, 0,
-
-    //skin leg left back
-    2.5, 8, 1, 3.5, 8, 1, 3.5, 11, 1,
-    2.5, 8, 1, 3.5, 11, 1, 2.5, 11, 1,
-
-    //skin leg left back
-    3.5, 8, 0, 3.5, 8, 1, 3.5, 11, 1,
-    3.5, 8, 0, 3.5, 11, 1, 3.5, 11, 0,
-
-    //skin leg left back
-    2.5, 8, 0, 2.5, 8, 1, 2.5, 11, 1,
-    2.5, 8, 0, 2.5, 11, 1, 2.5, 11, 0,
-
-    //skin hand left
-    //2.5, 0, 0, 3.5, 0, 0, 3.5, 3, 0,
-    //2.5, 0, 0, 3.5, 3, 0, 2.5, 3, 0,
-
-    //pants back
-    0, 2, 0, 4, 2, 0, 4, 8, 0,
-    0, 2, 0, 4, 8, 0, 0, 8, 0,
-
-    //pants back
-    0, 2, 1.5, 4, 2, 1.5, 4, 8, 1.5,
-    0, 2, 1.5, 4, 8, 1.5, 0, 8, 1.5,
-
-    4, 2, 0, 4, 2, 1.5, 4, 8, 1.5,
-    4, 2, 0, 4, 8, 1.5, 4, 8, 0,
-
-    0, 2, 0, 0, 2, 1.5, 0, 8, 1.5,
-    0, 2, 0, 0, 8, 1.5, 0, 8, 0,
-  ];
-
+  }
+}
+for(l=rmax; l>=0; l-= step){
+  y = [ 2*rmax-l, 2*rmax-l+step ];
+  r = [ rstart+l, rstart+l+step  ]
+  let delta = 360/6;
+    for(i=0; i<6; i++){
+        var alfa1 = i * delta;
+        var alfa2 = (i+1)*delta;
+        
+        let x1top = r[0] * Math.cos(alfa1*Math.PI/180);
+        let z1top = r[0] * Math.sin(alfa1*Math.PI/180);
+        
+        let x2top = r[0] * Math.cos(alfa2*Math.PI/180);
+        let z2top = r[0] * Math.sin(alfa2*Math.PI/180);
+  
+        let x1bottom= r[1] * Math.cos(alfa1*Math.PI/180);
+        let z1bottom = r[1] * Math.sin(alfa1*Math.PI/180);
+        
+        let x2bottom = r[1] * Math.cos(alfa2*Math.PI/180);
+        let z2bottom = r[1] * Math.sin(alfa2*Math.PI/180);
+    
+        
+        manPosition = manPosition.concat([x1top, y[0], z1top]); //1 top
+        manPosition = manPosition.concat([x2top, y[0], z2top]); //2 top
+        manPosition = manPosition.concat([x1bottom, y[1], z1bottom]); //4 bottom
+        
+        manPosition = manPosition.concat([x2top, y[0], z2top]); //1 top
+        manPosition = manPosition.concat([x1bottom, y[1], z1bottom]); //4 bottom
+        manPosition = manPosition.concat([x2bottom, y[1], z2bottom]); //3 bottom
+  
+  
+  
+    }
+  }
+ 
   const manColor = [
     //shirt down
     ...shirt, ...shirt, ...shirt,
@@ -264,22 +216,6 @@ function main() {
     ...shirt, ...shirt, ...shirt,
     ...shirt, ...shirt, ...shirt,
 
-    //shirt top
-    ...shirt, ...shirt, ...shirt,
-    ...shirt, ...shirt, ...shirt,
-
-    //shirt top
-    ...shirt, ...shirt, ...shirt,
-    ...shirt, ...shirt, ...shirt,
-
-    //shirt top
-    ...shirt, ...shirt, ...shirt,
-    ...shirt, ...shirt, ...shirt,
-
-    //shirt top
-    ...shirt, ...shirt, ...shirt,
-    ...shirt, ...shirt, ...shirt,
-
     //skin head
     ...skin, ...skin, ...skin,
     ...skin, ...skin, ...skin,
@@ -295,49 +231,7 @@ function main() {
     //skin head
     ...skin, ...skin, ...skin,
     ...skin, ...skin, ...skin,
-    //skin neck
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-
-    //skin neck
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-    //skin neck
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-
-    //skin neck
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-
-    //skin leg right
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-
-    //skin leg right
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-    //skin leg right
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-
-    //skin leg right
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-
-    //skin leg left
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-
-    //skin leg left
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-
-    //skin leg left
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-
-    //skin leg left
+    //skin head
     ...skin, ...skin, ...skin,
     ...skin, ...skin, ...skin,
 
@@ -355,109 +249,59 @@ function main() {
   ];
 
   const manCoords = [
-    //shirt down
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
 
-    //shirt down
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
+    //shirt down front
+    0.4, 0.425, 0.6, 0.425, 0.6, 0.71,
+    0.4, 0.425, 0.6, 0.71, 0.4, 0.71,
 
-    //shirt down
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
-    //shirt down
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
+    //shirt down back
+    0.6, 0.425, 0.8, 0.425, 0.8, 0.71,
+    0.6, 0.425, 0.8, 0.71, 0.6, 0.71,
 
-    //shirt top
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
+    //shirt down left
+    0.6, 0.14, 0.8, 0.14, 0.8, 0.425,
+    0.6, 0.14, 0.8, 0.425, 0.6, 0.425,
 
-    //shirt top
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
-
-    //shirt top
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
-
-    //shirt top
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
+    //shirt down right
+    0.4, 0.14, 0.6, 0.14, 0.6, 0.425,
+    0.4, 0.14, 0.6, 0.425, 0.4, 0.425,
 
     //skin head front
-    0, 0, 1, 0, 1, 1,
-    0, 0, 1, 1, 0, 1,
+    0, 0, 0.2, 0, 0.2, 0.1428,
+    0, 0, 0.2, 0.1428, 0, 0.1428,
 
     //skin head back
-    0, 0, 1, 0, 1, 1,
-    0, 0, 1, 1, 0, 1,
+    0.4, 0, 0.6, 0, 0.6, 0.1428,
+    0.4, 0, 0.6, 0.1428, 0.4, 0.1428,
 
-    //skin head
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
+    //skin head right
+    0.2, 0, 0.4, 0, 0.4, 0.1428,
+    0.2, 0, 0.4, 0.1428, 0.2, 0.1428,
 
-    //skin head
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
-    //skin neck
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
+    //skin head left
+    0.8, 0, 1, 0, 1, 0.1428,
+    0.8, 0, 1, 0.1428, 0.8, 0.1428,
 
-    //skin neck
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
-    //skin neck
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
+    //skin head top
+    0.6, 0, 0.8, 0, 0.8, 0.1428,
+    0.6, 0, 0.8, 0.1428, 0.6, 0.1428,
 
-    //skin neck
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
+    //pants front
+    0.2, 0.425, 0.4, 0.425, 0.4, 0.7,
+    0.2, 0.425, 0.4, 0.7, 0.2, 0.7,
 
-    //skin leg right
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
 
-    //skin leg right
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
-    //skin leg right
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
+    //pants back
+    0, 0.425, 0.2, 0.425, 0.2, 0.7,
+    0, 0.425, 0.2, 0.7, 0, 0.7,
 
-    //skin leg right
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
+    //pants right
+    0, 0.14, 0.2, 0.14, 0.2, 0.425,
+    0, 0.14, 0.2, 0.425, 0, 0.425,
 
-    //skin leg left
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
-
-    //skin leg left
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
-
-    //skin leg left
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
-
-    //skin leg left
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
-
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
-
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
-
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
-
-    ...zerozero, ...zerozero, ...zerozero,
-    ...zerozero, ...zerozero, ...zerozero,
+    //pants left
+    0.2, 0.14, 0.4, 0.14, 0.4, 0.425,
+    0.2, 0.14, 0.4, 0.425, 0.2, 0.425,
   ];
 
   const cubePosition = [
@@ -588,7 +432,7 @@ function main() {
 
   let temp2;
   [cubeVertBuffer, cubeNumItems, cubeItemSize] = initBuffer(cubePosition, 3);
-  [cubeColorBuffer] = initBuffer(cubeColor, 2)
+  [cubeColorBuffer] = initBuffer(cubeColor, 2) 
 
 
   //load texture
@@ -601,7 +445,7 @@ function main() {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   }
-  textureImg.src = "tex.png"
+  textureImg.src = "texture.png" 
 
 
 
@@ -763,14 +607,14 @@ function tick() {
 
 
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);
+  gl.clearColor(1.0, 1.0, 1.0, 1.0);
   gl.enable(gl.DEPTH_TEST);
-  gl.depthMask(gl.TRUE);
+
   gl.depthFunc(gl.LEQUAL);
-  gl.depthRange(0.0, 3.0);
+
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  gl.clearDepth(0.0);
+
   gl.useProgram(shaderProgram);
 
 
@@ -784,151 +628,19 @@ function tick() {
   attribLocCoords = programInfo.attribLocations.vertexCoords;
 
 
-  /*   //uMMatrix = MatrixMul(uMMatrix, uMScale);
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstMinusX);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    switchBuffers(cubeVertBuffer, cubeColorBuffer, cubeNumItems, cubeItemSize)
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstX);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstMinusX);
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-    // end of left, now right
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstX);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstX);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstMinusZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstMinusZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstX);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstX);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstMinusX);
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstMinusZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstMinusZ);
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstMinusZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstMinusZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstMinusX);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstX);
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstX);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstX);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstX);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstMinusX);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstX);
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstZ);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstMinusX);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize)
-  
-    uMMatrix = MatrixMul(uMMatrix, uMTranslateConstMinusX);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
-    drawTriangles(cubeNumItems * cubeItemSize) */
-
   switchBuffers(manVertBuffer, manColorBuffer, manNumItems, manItemSize)
   gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uManMatrix));
 
   gl.bindBuffer(gl.ARRAY_BUFFER, manCoordsBuffer);
-  gl.vertexAttribPointer(attribLocCoords, 2, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(attribLocCoords, 3, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(attribLocCoords);
 
-  gl.activeTexture(gl.TEXTURE0);
+   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
   gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
 
   drawTriangles(manNumItems)
-
+  //gl.drawArrays(gl.POINTS, 0 , 3)
 }
 
 
