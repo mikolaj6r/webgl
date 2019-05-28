@@ -4,6 +4,7 @@ var uPMatrix;
 
 var attribLocCol;
 var attribLocPos;
+var attribLocCoords;
 
 var manVertBuffer;
 var manColorBuffer;
@@ -12,10 +13,6 @@ var manNumItems;
 var manCoordsBuffer;
 var manCoordsNumItems;
 var manCoordsItemSize;
-var cubeVertBuffer;
-var cubeColorBuffer;
-var cubeItemSize;
-var cubeNumItems;
 
 
 var programInfo;
@@ -36,17 +33,20 @@ var translateVX = 0.0;
 var translateVY = 0.0;
 var translateVZ = 0.0;
 
-let shirt = [0.2, 0.2, 0.9];
-let skin = [0.6, 0.3, 0.2];
-let pants = [0.4, 0.3, 0.6];
-const white = [0.9, 0.9, 0.9];
-const black = [0, 0, 0];
-const floor = white;
-const zeroone = [0.0, 1.0];
-const oneone = [1.0, 1.0];
-const zerozero = [0.0, 0.0];
-
 var textureBuffer;
+
+function CrossProduct(A, B) {
+  return [
+    A[1] * B[2] - A[2] * B[1],
+    A[2] * B[0] - A[0] * B[2],
+    A[0] * B[1] - A[1] * B[0]
+  ];
+}
+
+function Normalize(A) {
+  const length = Math.sqrt(A[0] * A[0] + A[1] * A[1] + A[2] * A[2])
+  return [A[0] / length, A[1] / length, A[2] / length];
+}
 
 function MatrixMul(matrix1, matrix2) {
   let c = [
@@ -107,8 +107,8 @@ function main() {
     varying vec2 vTexUV;
     uniform sampler2D uSampler;
     void main(){
-        gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0);
-        //gl_FragColor = texture2D(uSampler, vTexUV);
+        //gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0);
+        gl_FragColor = texture2D(uSampler, vTexUV);
     }
   `;
 
@@ -128,298 +128,96 @@ function main() {
     },
   };
 
-var manPosition = [];
-let rstart = 0;
-let rmax = 5;
-let step = 0.1
-
-for(l=0; l<rmax; l+= step){
-y = [ rstart+l, rstart+l+step ];
-r = [ rstart+l, rstart+l+step  ]
-let delta = 360/6;
-  for(i=0; i<6; i++){
-      var alfa1 = i * delta;
-      var alfa2 = (i+1)*delta;
-      
-      let x1top = r[0] * Math.cos(alfa1*Math.PI/180);
-      let z1top = r[0] * Math.sin(alfa1*Math.PI/180);
-      
-      let x2top = r[0] * Math.cos(alfa2*Math.PI/180);
-      let z2top = r[0] * Math.sin(alfa2*Math.PI/180);
-
-      let x1bottom= r[1] * Math.cos(alfa1*Math.PI/180);
-      let z1bottom = r[1] * Math.sin(alfa1*Math.PI/180);
-      
-      let x2bottom = r[1] * Math.cos(alfa2*Math.PI/180);
-      let z2bottom = r[1] * Math.sin(alfa2*Math.PI/180);
-  
-      
-      manPosition = manPosition.concat([x1top, y[0], z1top]); //1 top
-      manPosition = manPosition.concat([x2top, y[0], z2top]); //2 top
-      manPosition = manPosition.concat([x1bottom, y[1], z1bottom]); //4 bottom
-      
-      manPosition = manPosition.concat([x2top, y[0], z2top]); //1 top
-      manPosition = manPosition.concat([x1bottom, y[1], z1bottom]); //4 bottom
-      manPosition = manPosition.concat([x2bottom, y[1], z2bottom]); //3 bottom
 
 
+  var manPosition = [];
+  var manCoords = [];
+  var manColor = [];
+  var normalVectors = [];
 
-  }
-}
-for(l=rmax; l>=0; l-= step){
-  y = [ 2*rmax-l, 2*rmax-l+step ];
-  r = [ rstart+l, rstart+l+step  ]
-  let delta = 360/6;
-    for(i=0; i<6; i++){
-        var alfa1 = i * delta;
-        var alfa2 = (i+1)*delta;
-        
-        let x1top = r[0] * Math.cos(alfa1*Math.PI/180);
-        let z1top = r[0] * Math.sin(alfa1*Math.PI/180);
-        
-        let x2top = r[0] * Math.cos(alfa2*Math.PI/180);
-        let z2top = r[0] * Math.sin(alfa2*Math.PI/180);
-  
-        let x1bottom= r[1] * Math.cos(alfa1*Math.PI/180);
-        let z1bottom = r[1] * Math.sin(alfa1*Math.PI/180);
-        
-        let x2bottom = r[1] * Math.cos(alfa2*Math.PI/180);
-        let z2bottom = r[1] * Math.sin(alfa2*Math.PI/180);
-    
-        
-        manPosition = manPosition.concat([x1top, y[0], z1top]); //1 top
-        manPosition = manPosition.concat([x2top, y[0], z2top]); //2 top
-        manPosition = manPosition.concat([x1bottom, y[1], z1bottom]); //4 bottom
-        
-        manPosition = manPosition.concat([x2top, y[0], z2top]); //1 top
-        manPosition = manPosition.concat([x1bottom, y[1], z1bottom]); //4 bottom
-        manPosition = manPosition.concat([x2bottom, y[1], z2bottom]); //3 bottom
-  
-  
-  
+  const n = 10; // num of elements in width
+  const m = 10; // num of elements in height
+  const R = 2; //radius
+
+
+  const deltaAlfa = 360 / n;
+  //const deltaBeta = ((360 / m) * Math.PI / 180) / 4;
+  const deltaBeta = 180 / m;
+  const deltaBetaRad = deltaBeta * (Math.PI / 180);
+
+
+  for (let j = -m / 2; j < m / 2; j++) {
+    const beta1 = j * deltaBetaRad;
+    const beta2 = (j + 1) * deltaBetaRad;
+
+    const r1 = R * Math.cos(beta1);
+    const r2 = R * Math.cos(beta2);
+    const y1 = R * Math.sin(beta1);
+    const y2 = R * Math.sin(beta2);
+
+
+    for (let i = 0; i < n; i++) {
+      const alfa1 = i * deltaAlfa;
+      const alfa1rad = alfa1 * Math.PI / 180;
+      const alfa2 = (i + 1) * deltaAlfa;
+      const alfa2rad = alfa2 * Math.PI / 180;
+
+      const pnt0X = r1 * Math.cos(alfa1rad);
+      const pnt0Z = r1 * Math.sin(alfa1rad);
+
+      const pnt1X = r1 * Math.cos(alfa2rad);
+      const pnt1Z = r1 * Math.sin(alfa2rad);
+
+      const pnt2X = r2 * Math.cos(alfa2rad);
+      const pnt2Z = r2 * Math.sin(alfa2rad);
+
+      const pnt3X = r2 * Math.cos(alfa1rad);
+      const pnt3Z = r2 * Math.sin(alfa1rad);
+
+      const vecA = [pnt1X - pnt0X, y1 - y1, pnt1Z - pnt0Z];
+      const vecB = [pnt3X - pnt0X, y2 - y1, pnt3Z - pnt0Z];
+      const norm = Normalize(CrossProduct(vecA, vecB));
+
+
+      manPosition.push(...[pnt0X, y1, pnt0Z]); //0 top
+      manCoords.push(...[0.2, 0]);
+
+      manPosition.push(...[pnt1X, y1, pnt1Z]); //1 top
+      manCoords.push(...[0.8, 0]);
+
+      manPosition.push(...[pnt2X, y2, pnt2Z]); //2 bottom
+      manCoords.push(...[0.8, 1]);
+
+      normalVectors.push(...norm);
+      normalVectors.push(...norm);
+      normalVectors.push(...norm);
+
+      manColor.push(...[1, 1, 1])
+      manColor.push(...[1, 1, 1])
+      manColor.push(...[1, 1, 1])
+
+
+      manPosition.push(...[pnt0X, y1, pnt0Z]); //0 top
+      manCoords.push(...[0.2, 0]);
+
+      manPosition.push(...[pnt2X, y2, pnt2Z]); //2 bottom
+      manCoords.push(...[0.8, 1])
+
+      manPosition.push(...[pnt3X, y2, pnt3Z]); //3 bottom
+      manCoords.push(...[0.2, 1])
+
+      normalVectors.push(...norm);
+      normalVectors.push(...norm);
+      normalVectors.push(...norm);
+
+      manColor.push(...[1, 1, 1])
+      manColor.push(...[1, 1, 1])
+      manColor.push(...[1, 1, 1])
     }
   }
- 
-  const manColor = [
-    //shirt down
-    ...shirt, ...shirt, ...shirt,
-    ...shirt, ...shirt, ...shirt,
-
-    //shirt down
-    ...shirt, ...shirt, ...shirt,
-    ...shirt, ...shirt, ...shirt,
-
-    //shirt down
-    ...shirt, ...shirt, ...shirt,
-    ...shirt, ...shirt, ...shirt,
-    //shirt down
-    ...shirt, ...shirt, ...shirt,
-    ...shirt, ...shirt, ...shirt,
-
-    //skin head
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-
-    //skin head
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-
-    //skin head
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-
-    //skin head
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-    //skin head
-    ...skin, ...skin, ...skin,
-    ...skin, ...skin, ...skin,
-
-    ...pants, ...pants, ...pants,
-    ...pants, ...pants, ...pants,
-
-    ...pants, ...pants, ...pants,
-    ...pants, ...pants, ...pants,
-
-    ...pants, ...pants, ...pants,
-    ...pants, ...pants, ...pants,
-
-    ...pants, ...pants, ...pants,
-    ...pants, ...pants, ...pants,
-  ];
-
-  const manCoords = [
-
-    //shirt down front
-    0.4, 0.425, 0.6, 0.425, 0.6, 0.71,
-    0.4, 0.425, 0.6, 0.71, 0.4, 0.71,
-
-    //shirt down back
-    0.6, 0.425, 0.8, 0.425, 0.8, 0.71,
-    0.6, 0.425, 0.8, 0.71, 0.6, 0.71,
-
-    //shirt down left
-    0.6, 0.14, 0.8, 0.14, 0.8, 0.425,
-    0.6, 0.14, 0.8, 0.425, 0.6, 0.425,
-
-    //shirt down right
-    0.4, 0.14, 0.6, 0.14, 0.6, 0.425,
-    0.4, 0.14, 0.6, 0.425, 0.4, 0.425,
-
-    //skin head front
-    0, 0, 0.2, 0, 0.2, 0.1428,
-    0, 0, 0.2, 0.1428, 0, 0.1428,
-
-    //skin head back
-    0.4, 0, 0.6, 0, 0.6, 0.1428,
-    0.4, 0, 0.6, 0.1428, 0.4, 0.1428,
-
-    //skin head right
-    0.2, 0, 0.4, 0, 0.4, 0.1428,
-    0.2, 0, 0.4, 0.1428, 0.2, 0.1428,
-
-    //skin head left
-    0.8, 0, 1, 0, 1, 0.1428,
-    0.8, 0, 1, 0.1428, 0.8, 0.1428,
-
-    //skin head top
-    0.6, 0, 0.8, 0, 0.8, 0.1428,
-    0.6, 0, 0.8, 0.1428, 0.6, 0.1428,
-
-    //pants front
-    0.2, 0.425, 0.4, 0.425, 0.4, 0.7,
-    0.2, 0.425, 0.4, 0.7, 0.2, 0.7,
 
 
-    //pants back
-    0, 0.425, 0.2, 0.425, 0.2, 0.7,
-    0, 0.425, 0.2, 0.7, 0, 0.7,
 
-    //pants right
-    0, 0.14, 0.2, 0.14, 0.2, 0.425,
-    0, 0.14, 0.2, 0.425, 0, 0.425,
-
-    //pants left
-    0.2, 0.14, 0.4, 0.14, 0.4, 0.425,
-    0.2, 0.14, 0.4, 0.425, 0.2, 0.425,
-  ];
-
-  const cubePosition = [
-    // Front face
-    -1.0, -1.0, 1.0,
-    1.0, -1.0, 1.0,
-    1.0, 1.0, 1.0,
-    -1.0, -1.0, 1.0,
-    1.0, 1.0, 1.0,
-    -1.0, 1.0, 1.0,
-
-
-    // Back face
-    -1.0, -1.0, -1.0,
-    -1.0, 1.0, -1.0,
-    1.0, 1.0, -1.0,
-    -1.0, -1.0, -1.0,
-    1.0, 1.0, -1.0,
-    1.0, -1.0, -1.0,
-
-    // Top face
-    -1.0, 1.0, -1.0,
-    -1.0, 1.0, 1.0,
-    1.0, 1.0, 1.0,
-    -1.0, 1.0, -1.0,
-    1.0, 1.0, 1.0,
-    1.0, 1.0, -1.0,
-    // Bottom face
-    -1.0, -1.0, -1.0,
-    1.0, -1.0, -1.0,
-    1.0, -1.0, 1.0,
-    -1.0, -1.0, -1.0,
-    1.0, -1.0, 1.0,
-    -1.0, -1.0, 1.0,
-    // Right face
-    1.0, -1.0, -1.0,
-    1.0, 1.0, -1.0,
-    1.0, 1.0, 1.0,
-    1.0, -1.0, -1.0,
-    1.0, 1.0, 1.0,
-    1.0, -1.0, 1.0,
-
-    // Left face
-    -1.0, -1.0, -1.0,
-    -1.0, -1.0, 1.0,
-    -1.0, 1.0, 1.0,
-    -1.0, -1.0, -1.0,
-    -1.0, 1.0, 1.0,
-    -1.0, 1.0, -1.0,
-  ];
-
-  const cubeColor = [
-    // Front face
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-
-
-    // Back face
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-
-    // Top face
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-    // Bottom face
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-    // Right face
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-
-    // Left face
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-    ...white,
-  ]
-
-  const floorPosition = [
-    -1.0, -1.0, -1.0,
-    1.0, -1.0, -1.0,
-    1.0, -1.0, 1.0,
-    -1.0, -1.0, -1.0,
-    1.0, -1.0, 1.0,
-    -1.0, -1.0, 1.0,
-  ]
-
-  const floorColor = [
-    ...floor,
-    ...floor,
-    ...floor,
-    ...floor,
-    ...floor,
-    ...floor,
-
-  ]
   let temp;
 
   [manVertBuffer, manNumItems, manItemSize] = initBuffer(manPosition, 3);
@@ -430,9 +228,6 @@ for(l=rmax; l>=0; l-= step){
   [manCoordsBuffer, manCoordsNumItems, manCoordsItemSize] = initBuffer(manCoords, 2);
 
 
-  let temp2;
-  [cubeVertBuffer, cubeNumItems, cubeItemSize] = initBuffer(cubePosition, 3);
-  [cubeColorBuffer] = initBuffer(cubeColor, 2) 
 
 
   //load texture
@@ -445,7 +240,7 @@ for(l=rmax; l>=0; l-= step){
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   }
-  textureImg.src = "texture.png" 
+  textureImg.src = "tex.png"
 
 
 
@@ -464,7 +259,6 @@ for(l=rmax; l>=0; l-= step){
   requestAnimationFrame(tick);
 }
 function tick() {
-  //console.log(manVertBuffer)
   const pos = [0, -0.5, 3];
   let uMMatrix = [
     1, 0, 0, 0,
@@ -472,42 +266,6 @@ function tick() {
     0, 0, 1, 0,
     ...pos, 1
   ]
-
-  let uMTranslateZ = [
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1
-  ]
-
-  let uMTranslateConstMinusX = [
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    -2, 0, 0, 1
-  ]
-
-  let uMTranslateConstX = [
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    2, 0, 0, 1
-  ]
-
-  let uMTranslateConstMinusZ = [
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, -2, 1
-  ]
-
-  let uMTranslateConstZ = [
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 2, 1
-  ]
-
 
   let uMRotZ = [
     Math.cos(angleZ * Math.PI / 180.0), Math.sin(angleZ * Math.PI / 180.0), 0, 0,
@@ -545,11 +303,9 @@ function tick() {
     0, 0, 0, 1
   ];
 
-  //uMMatrix = MatrixMul(uMMatrix, scaleMatrix);
   uMMatrix = MatrixMul(uMMatrix, uMRotX);
   uMMatrix = MatrixMul(uMMatrix, uMRotY);
   uMMatrix = MatrixMul(uMMatrix, uMRotZ);
-  //uMMatrix = MatrixMul(uMMatrix, uMTranslateZ);
 
 
   let uMTranslate = [
@@ -609,19 +365,16 @@ function tick() {
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
   gl.clearColor(1.0, 1.0, 1.0, 1.0);
   gl.enable(gl.DEPTH_TEST);
-
   gl.depthFunc(gl.LEQUAL);
 
-
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
   gl.useProgram(shaderProgram);
 
 
   //pass matrices
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, new Float32Array(uPMatrix));
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, new Float32Array(uVMatrix));
-
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uManMatrix));
 
   attribLocPos = programInfo.attribLocations.vertexPosition;
   attribLocCol = programInfo.attribLocations.vertexColor;
@@ -629,18 +382,17 @@ function tick() {
 
 
   switchBuffers(manVertBuffer, manColorBuffer, manNumItems, manItemSize)
-  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uManMatrix));
 
   gl.bindBuffer(gl.ARRAY_BUFFER, manCoordsBuffer);
-  gl.vertexAttribPointer(attribLocCoords, 3, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(attribLocCoords, manCoordsItemSize, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(attribLocCoords);
 
-   gl.activeTexture(gl.TEXTURE0);
+  gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
   gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
 
   drawTriangles(manNumItems)
-  //gl.drawArrays(gl.POINTS, 0 , 3)
+
 }
 
 
@@ -667,7 +419,6 @@ function switchBuffers(vert, color, num, size) {
   gl.vertexAttribPointer(attribLocCol, size, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(attribLocCol);
 }
-
 
 function initShaderProgram(gl, vsSource, fsSource) {
   const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
