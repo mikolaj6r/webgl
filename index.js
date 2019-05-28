@@ -5,6 +5,7 @@ var uPMatrix;
 var attribLocCol;
 var attribLocPos;
 var attribLocCoords;
+var attribLocNormal;
 
 var manVertBuffer;
 var manColorBuffer;
@@ -13,7 +14,9 @@ var manNumItems;
 var manCoordsBuffer;
 var manCoordsNumItems;
 var manCoordsItemSize;
-
+var normalBuffer;
+var normalNumItems;
+var normalItemSize;
 
 var programInfo;
 
@@ -83,7 +86,7 @@ function main() {
     attribute vec3 aVertexColor;
     attribute vec3 aVertexPosition;
     attribute vec2 aVertexCoords;
-
+    attribute vec3 aNormals;
     uniform mat4 uMMatrix;
     uniform mat4 uPMatrix;
     uniform mat4 uVMatrix;
@@ -94,7 +97,7 @@ function main() {
     void main(){
         gl_Position = uPMatrix * uVMatrix  * uMMatrix * vec4(aVertexPosition, 1.0);
 
-        vColor = aVertexColor;
+        vColor = aNormals;
         vTexUV = aVertexCoords;
         
     }
@@ -107,8 +110,8 @@ function main() {
     varying vec2 vTexUV;
     uniform sampler2D uSampler;
     void main(){
-        //gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0);
-        gl_FragColor = texture2D(uSampler, vTexUV);
+        gl_FragColor = vec4(vColor, 1.0);
+        //gl_FragColor = texture2D(uSampler, vTexUV);
     }
   `;
 
@@ -119,7 +122,8 @@ function main() {
     attribLocations: {
       vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
       vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
-      vertexCoords: gl.getAttribLocation(shaderProgram, 'aVertexCoords')
+      vertexCoords: gl.getAttribLocation(shaderProgram, 'aVertexCoords'),
+      normals: gl.getAttribLocation(shaderProgram, 'aNormals')
     },
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uPMatrix'),
@@ -192,9 +196,9 @@ function main() {
       normalVectors.push(...norm);
       normalVectors.push(...norm);
 
-      manColor.push(...[1, 1, 1])
-      manColor.push(...[1, 1, 1])
-      manColor.push(...[1, 1, 1])
+      manColor.push(...[0.25, 1, 1])
+      manColor.push(...[0.25, 1, 1])
+      manColor.push(...[0.25, 1, 1])
 
 
       manPosition.push(...[pnt0X, y1, pnt0Z]); //0 top
@@ -210,13 +214,13 @@ function main() {
       normalVectors.push(...norm);
       normalVectors.push(...norm);
 
-      manColor.push(...[1, 1, 1])
-      manColor.push(...[1, 1, 1])
-      manColor.push(...[1, 1, 1])
+      manColor.push(...[0.25, 1, 1])
+      manColor.push(...[0.25, 1, 1])
+      manColor.push(...[0.25, 1, 1])
     }
   }
 
-
+console.log(normalVectors);
 
   let temp;
 
@@ -227,7 +231,9 @@ function main() {
 
   [manCoordsBuffer, manCoordsNumItems, manCoordsItemSize] = initBuffer(manCoords, 2);
 
+ let temp4;
 
+  [normalBuffer, normalNumItems, normalItemSize] = initBuffer(normalVectors, 3);
 
 
   //load texture
@@ -379,13 +385,18 @@ function tick() {
   attribLocPos = programInfo.attribLocations.vertexPosition;
   attribLocCol = programInfo.attribLocations.vertexColor;
   attribLocCoords = programInfo.attribLocations.vertexCoords;
-
+  attribLocNormal = programInfo.attribLocations.normals;
 
   switchBuffers(manVertBuffer, manColorBuffer, manNumItems, manItemSize)
 
   gl.bindBuffer(gl.ARRAY_BUFFER, manCoordsBuffer);
   gl.vertexAttribPointer(attribLocCoords, manCoordsItemSize, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(attribLocCoords);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+  gl.vertexAttribPointer(attribLocNormal, normalItemSize, gl.FLOAT, false, 0,0);
+  gl.enableVertexAttribArray(attribLocNormal);
+
 
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
