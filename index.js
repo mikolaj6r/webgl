@@ -1,3 +1,18 @@
+/*
+    przygotowac symulacje ukladu slonecznego
+
+    na srodku zolte, nieoswietlone slonce
+    dookola kraza planety, poteksturowane
+    minimum 5 planet, roznej wielkosci, krecace wokol wlasnej osi
+    bonus: ksiezyc, krecacy dookola ziemi lub pierscienie dookola jowisza
+    i wszystko ma sie krecic dookola slonca
+    mozna sterowac kamera`
+    obiekt nic nie przyslania, dla slonca if wylaczajacy oswietlenie (uSmack ==0), dla innych planet (uSmack == 1) 
+    
+
+
+*/
+
 var gl;
 var shaderProgram;
 var uPMatrix;
@@ -38,6 +53,10 @@ var translateVZ = 0.0;
 
 var textureBuffer;
 
+const yellowClr = [1, 1, 0];
+const planets= [ 'earth'];
+//'jupiter', 'neptune', 'saturn', 'uranus', 'mars', 'mercury'
+
 function CrossProduct(A, B) {
   return [
     A[1] * B[2] - A[2] * B[1],
@@ -49,6 +68,9 @@ function CrossProduct(A, B) {
 function Normalize(A) {
   const length = Math.sqrt(A[0] * A[0] + A[1] * A[1] + A[2] * A[2])
   return [A[0] / length, A[1] / length, A[2] / length];
+}
+function isPowerOf2(value) {
+  return (value & (value - 1)) == 0;
 }
 
 function MatrixMul(matrix1, matrix2) {
@@ -83,22 +105,30 @@ function main() {
 
   const vsSource = `
     precision highp float;
-    attribute vec3 aVertexColor;
+
+    attribute vec3 aVertexColor; // attributes are read-only
     attribute vec3 aVertexPosition;
     attribute vec2 aVertexCoords;
     attribute vec3 aNormals;
-    uniform mat4 uMMatrix;
+
+    uniform mat4 uMMatrix;// uniforms are read-only and shared vs and fs
     uniform mat4 uPMatrix;
     uniform mat4 uVMatrix;
 
+    uniform bool inLight;
 
-    varying vec3 vColor;
+    varying vec3 vColor; // varying are shared vs and fs
     varying vec2 vTexUV;
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+
     void main(){
         gl_Position = uPMatrix * uVMatrix  * uMMatrix * vec4(aVertexPosition, 1.0);
 
-        vColor = aNormals;
+        vColor = aVertexColor;
         vTexUV = aVertexCoords;
+        vNormal = aNormals;
+        vPosition = aVertexPosition;
         
     }
 
@@ -108,9 +138,24 @@ function main() {
     precision highp float;
     varying vec3 vColor;
     varying vec2 vTexUV;
+    varying vec3 vNormal;
+    varying vec3 vPosition;
     uniform sampler2D uSampler;
+    uniform vec3 uLightPosition;
+    uniform bool inLight;
+    
+
     void main(){
+    float light = dot( normalize(vPosition - uLightPosition), vNormal );
+
+
+        if(inLight){
+        gl_FragColor = vec4(light, light, light, 1.0) * texture2D(uSampler, vTexUV);
+        }
+        else{
         gl_FragColor = vec4(vColor, 1.0);
+        }
+        
         //gl_FragColor = texture2D(uSampler, vTexUV);
     }
   `;
@@ -129,6 +174,7 @@ function main() {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uPMatrix'),
       modelMatrix: gl.getUniformLocation(shaderProgram, 'uMMatrix'),
       viewMatrix: gl.getUniformLocation(shaderProgram, 'uVMatrix'),
+      inLight: gl.getUniformLocation(shaderProgram, 'inLight'),
     },
   };
 
@@ -139,17 +185,19 @@ function main() {
   var manColor = [];
   var normalVectors = [];
 
-  const n = 10; // num of elements in width
-  const m = 10; // num of elements in height
+  const n = 32; // num of elements in width
+  const m = 32; // num of elements in height
   const R = 2; //radius
 
 
   const deltaAlfa = 360 / n;
-  //const deltaBeta = ((360 / m) * Math.PI / 180) / 4;
   const deltaBeta = 180 / m;
   const deltaBetaRad = deltaBeta * (Math.PI / 180);
 
-
+  let uv_y =  0;
+  let uv_x = 0;
+  const v = 1 / m ;
+  const u = 1 / n;
   for (let j = -m / 2; j < m / 2; j++) {
     const beta1 = j * deltaBetaRad;
     const beta2 = (j + 1) * deltaBetaRad;
@@ -161,6 +209,8 @@ function main() {
 
 
     for (let i = 0; i < n; i++) {
+        
+ 
       const alfa1 = i * deltaAlfa;
       const alfa1rad = alfa1 * Math.PI / 180;
       const alfa2 = (i + 1) * deltaAlfa;
@@ -184,43 +234,44 @@ function main() {
 
 
       manPosition.push(...[pnt0X, y1, pnt0Z]); //0 top
-      manCoords.push(...[0.2, 0]);
+      manCoords.push(...[uv_x, uv_y]);
 
       manPosition.push(...[pnt1X, y1, pnt1Z]); //1 top
-      manCoords.push(...[0.8, 0]);
+      manCoords.push(...[uv_x+u, uv_y]);
 
       manPosition.push(...[pnt2X, y2, pnt2Z]); //2 bottom
-      manCoords.push(...[0.8, 1]);
+      manCoords.push(...[uv_x+u, uv_y+v]);
 
       normalVectors.push(...norm);
       normalVectors.push(...norm);
       normalVectors.push(...norm);
 
-      manColor.push(...[0.25, 1, 1])
-      manColor.push(...[0.25, 1, 1])
-      manColor.push(...[0.25, 1, 1])
-
+      manColor.push(...yellowClr);
+      manColor.push(...yellowClr)
+      manColor.push(...yellowClr)
 
       manPosition.push(...[pnt0X, y1, pnt0Z]); //0 top
-      manCoords.push(...[0.2, 0]);
+      manCoords.push(...[uv_x, uv_y]);
 
       manPosition.push(...[pnt2X, y2, pnt2Z]); //2 bottom
-      manCoords.push(...[0.8, 1])
+      manCoords.push(...[uv_x+u, uv_y+v])
 
       manPosition.push(...[pnt3X, y2, pnt3Z]); //3 bottom
-      manCoords.push(...[0.2, 1])
+      manCoords.push(...[uv_x, uv_y+v])
 
       normalVectors.push(...norm);
       normalVectors.push(...norm);
       normalVectors.push(...norm);
 
-      manColor.push(...[0.25, 1, 1])
-      manColor.push(...[0.25, 1, 1])
-      manColor.push(...[0.25, 1, 1])
+      manColor.push(...yellowClr);
+      manColor.push(...yellowClr)
+      manColor.push(...yellowClr)
     }
+      console.log(uv_y);
+      uv_y += v;
+      uv_x += u;
   }
 
-console.log(normalVectors);
 
   let temp;
 
@@ -242,11 +293,19 @@ console.log(normalVectors);
   textureImg.onload = function () {
     gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureImg);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    
+      if (isPowerOf2(textureImg.width) && isPowerOf2(textureImg.height)) {
+       // Yes, it's a power of 2. Generate mips.
+       gl.generateMipmap(gl.TEXTURE_2D);
+    } else {
+       // No, it's not a power of 2. Turn off mips and set
+       // wrapping to clamp to edge
+       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    }
   }
-  textureImg.src = "tex.png"
+  textureImg.src = "earth.jpg"
 
 
 
@@ -265,12 +324,16 @@ console.log(normalVectors);
   requestAnimationFrame(tick);
 }
 function tick() {
-  const pos = [0, -0.5, 3];
+  angleX += 0.1;
+  angleY += 0.1;
+  angleZ += 0.1;
+    
+    
   let uMMatrix = [
     1, 0, 0, 0,
     0, 1, 0, 0,
     0, 0, 1, 0,
-    ...pos, 1
+    0, 0, 0, 1
   ]
 
   let uMRotZ = [
@@ -295,17 +358,34 @@ function tick() {
   ];
 
   let scaleMatrix = [
-    0.05, 0, 0, 0,
-    0, 0.05, 0, 0,
-    0, 0, 0.05, 0,
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
     0, 0, 0, 1
   ];
 
+    
+   const scaleFunc = (x) => 
+    ([
+    x, 0, 0, 0,
+    0, x, 0, 0,
+    0, 0, x, 0,
+    0, 0, 0, 1
+    ]);
+    
+   const translate3dFunc = (a=0, b=0, c=0) => 
+    ([
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    a, b, c, 1
+    ]);
+
 
   let uMScale = [
-    10, 0, 0, 0,
-    0, 10, 0, 0,
-    0, 0, 10, 0,
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
     0, 0, 0, 1
   ];
 
@@ -313,22 +393,13 @@ function tick() {
   uMMatrix = MatrixMul(uMMatrix, uMRotY);
   uMMatrix = MatrixMul(uMMatrix, uMRotZ);
 
-
-  let uMTranslate = [
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    translateX, translateY, translateZ, 1
-  ]
-
-  uManMatrix = MatrixMul(uMTranslate, scaleMatrix);
-
-  let posV = [0, 0, 10];
+    
+  // view (camera) matrice
   let uVMatrix = [
     1, 0, 0, 0,
     0, 1, 0, 0,
     0, 0, 1, 0,
-    ...posV, 1
+    0, 0, 30, 1
   ]
 
 
@@ -367,7 +438,11 @@ function tick() {
   uVMatrix = MatrixMul(uVMatrix, uVTranslate);
   uVMatrix = invertMatrix(uVMatrix);
 
-
+//end operations of matrices
+    
+    
+    
+    
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
   gl.clearColor(1.0, 1.0, 1.0, 1.0);
   gl.enable(gl.DEPTH_TEST);
@@ -380,7 +455,7 @@ function tick() {
   //pass matrices
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, new Float32Array(uPMatrix));
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, new Float32Array(uVMatrix));
-  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uManMatrix));
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
 
   attribLocPos = programInfo.attribLocations.vertexPosition;
   attribLocCol = programInfo.attribLocations.vertexColor;
@@ -402,8 +477,24 @@ function tick() {
   gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
   gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
 
+  gl.uniform3f(gl.getUniformLocation(shaderProgram, "uLightPosition"), translateX, translateY, translateZ);
+     
+  gl.uniform1i(programInfo.uniformLocations.inLight, 0);  
   drawTriangles(manNumItems)
+   //end of sun
+    
+    
+   gl.uniform1i(programInfo.uniformLocations.inLight, 1);  
 
+    planets.forEach(name => {
+        uMMatrix = MatrixMul(uMMatrix, scaleFunc(0.8))
+    uMMatrix = MatrixMul(uMMatrix, translate3dFunc(-5));  
+    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
+    drawTriangles(manNumItems)
+    })
+
+    
+    requestAnimationFrame(tick);
 }
 
 
@@ -481,13 +572,13 @@ window.addEventListener("DOMContentLoaded", () => {
     if (e.code == "KeyU") angleVZ -= 0.5;
     if (e.code == "KeyO") angleVZ += 0.5;
 
-    if (e.code == "ArrowUp") translateZ += 1;
-    if (e.code == "ArrowDown") translateZ -= 1;
-    if (e.code == "ArrowLeft") translateX -= 1;
-    if (e.code == "ArrowRight") translateX += 1;
-    if (e.code == "PageUp") translateY += 1;
-    if (e.code == "PageDown") translateY -= 1;
-
+    if (e.code == "ArrowUp") translateZ += 0.5;
+    if (e.code == "ArrowDown") translateZ -= 0.5;
+    if (e.code == "ArrowLeft") translateX -= 0.5;
+    if (e.code == "ArrowRight") translateX += 0.5;
+    if (e.code == "PageUp") translateY += 0.5;
+    if (e.code == "PageDown") translateY -= 0.5;
+      
     requestAnimationFrame(tick);
   })
 })
