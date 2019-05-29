@@ -43,9 +43,9 @@ var angleVZ = 0.0;
 var angleVY = 0.0;
 var angleVX = 180.0;
 
-var translateX = 1.0;
-var translateY = 1.0;
-var translateZ = 1.0;
+var translateX = 2.0;
+var translateY = 2.0;
+var translateZ = 2.0;
 let test;
 var translateVX = 0.0;
 var translateVY = 0.0;
@@ -54,9 +54,9 @@ var translateVZ = 0.0;
 var textureBuffer;
 let textures = [];
 const yellowClr = [1, 1, 0];
-const planets = ['earth.jpg', 'jupiter.jpg', 'neptune.jpg', 'saturn.jpg', 'uranus.jpg', 'mars.jpg', 'mercury.jpg'];
+const planets = ['earth.jpg'];
 
-//, 
+//, ', 'jupiter.jpg', 'neptune.jpg', 'saturn.jpg', 'uranus.jpg', 'mars.jpg', 'mercury.jpg'
 
 function CrossProduct(A, B) {
   return [
@@ -113,6 +113,11 @@ const translate3dFunc = (a = 0, b = 0, c = 0) =>
 function createTexture(gl, url) {
   const textureBuffer = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
+
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
+                1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+                new Uint8Array([0, 0, 255, 255]));
+    
   var textureImg = new Image();
   textureImg.onload = function () {
     gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
@@ -189,7 +194,7 @@ function main() {
     
 
     void main(){
-    float light = dot( normalize(vPosition - uLightPosition), vNormal );
+    float light = dot( vNormal, normalize(vPosition + uLightPosition) );
 
 
         if(inLight){
@@ -328,28 +333,6 @@ function main() {
   [normalBuffer, normalNumItems, normalItemSize] = initBuffer(normalVectors, 3);
 
 
-  /*   //load texture
-    textureBuffer = gl.createTexture();
-    var textureImg = new Image();
-    textureImg.onload = function () {
-      gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureImg);
-  
-      if (isPowerOf2(textureImg.width) && isPowerOf2(textureImg.height)) {
-        // Yes, it's a power of 2. Generate mips.
-        gl.generateMipmap(gl.TEXTURE_2D);
-      } else {
-        // No, it's not a power of 2. Turn off mips and set
-        // wrapping to clamp to edge
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      }
-    }
-    textureImg.src = "earth.jpg" */
-
-
-
   const aspect = gl.viewportWidth / gl.viewportHeight;
   let fov = 45.0 * Math.PI / 180.0;
   let zFar = 100.0;
@@ -363,11 +346,10 @@ function main() {
   ];
 
   planets.forEach((name, index) => {
-    console.log(name);
     const texture = createTexture(gl, name);
-    gl.activeTexture(gl[`TEXTURE${index}`]);
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), index);
+    //gl.activeTexture(gl[`TEXTURE${index}`]);
+    //gl.bindTexture(gl.TEXTURE_2D, texture);
+    //gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), index);
 
     textures.push(texture);
   })
@@ -376,8 +358,8 @@ function main() {
   requestAnimationFrame(tick);
 }
 function tick() {
-  angleX += 0.1;
-  angleY += 0.1;
+ // angleX += 0.1;
+  //angleY += 0.1;
   //angleZ += 0.1;
 
 
@@ -501,9 +483,9 @@ function tick() {
   gl.enableVertexAttribArray(attribLocNormal);
 
 
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
-  gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
+  //gl.activeTexture(gl.TEXTURE0);
+  //gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
+  //gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
 
   gl.uniform3f(gl.getUniformLocation(shaderProgram, "uLightPosition"), translateX, translateY, translateZ);
 
@@ -515,7 +497,6 @@ function tick() {
   gl.uniform1i(programInfo.uniformLocations.inLight, 1);
 
   planets.forEach((name, index) => {
-    console.log(name);
     gl.activeTexture(gl[`TEXTURE${index}`]);
     gl.bindTexture(gl.TEXTURE_2D, textures[index]);
     gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), index);
