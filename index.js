@@ -43,19 +43,20 @@ var angleVZ = 0.0;
 var angleVY = 0.0;
 var angleVX = 180.0;
 
-var translateX = 0.0;
-var translateY = 0.0;
-var translateZ = 0.0;
+var translateX = 1.0;
+var translateY = 1.0;
+var translateZ = 1.0;
 let test;
 var translateVX = 0.0;
 var translateVY = 0.0;
 var translateVZ = 0.0;
 
 var textureBuffer;
-
+let textures = [];
 const yellowClr = [1, 1, 0];
-const planets= [ 'earth'];
-//'jupiter', 'neptune', 'saturn', 'uranus', 'mars', 'mercury'
+const planets = ['earth.jpg', 'jupiter.jpg', 'neptune.jpg', 'saturn.jpg', 'uranus.jpg', 'mars.jpg', 'mercury.jpg'];
+
+//, 
 
 function CrossProduct(A, B) {
   return [
@@ -92,6 +93,48 @@ function MatrixMul(matrix1, matrix2) {
   }
   return c;
 }
+
+const scaleFunc = (x) =>
+  ([
+    x, 0, 0, 0,
+    0, x, 0, 0,
+    0, 0, x, 0,
+    0, 0, 0, 1
+  ]);
+
+const translate3dFunc = (a = 0, b = 0, c = 0) =>
+  ([
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    a, b, c, 1
+  ]);
+
+function createTexture(gl, url) {
+  const textureBuffer = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
+  var textureImg = new Image();
+  textureImg.onload = function () {
+    gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureImg);
+
+    if (isPowerOf2(textureImg.width) && isPowerOf2(textureImg.height)) {
+      // Yes, it's a power of 2. Generate mips.
+      gl.generateMipmap(gl.TEXTURE_2D);
+    } else {
+      // No, it's not a power of 2. Turn off mips and set
+      // wrapping to clamp to edge
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    }
+  }
+  textureImg.src = url;
+
+  return textureBuffer;
+}
+
+
 function main() {
   const canv = document.getElementById("canvas");
   gl = null;
@@ -185,8 +228,8 @@ function main() {
   var manColor = [];
   var normalVectors = [];
 
-  const n = 32; // num of elements in width
-  const m = 32; // num of elements in height
+  const n = 50; // num of elements in width
+  const m = 50; // num of elements in height
   const R = 2; //radius
 
 
@@ -194,9 +237,9 @@ function main() {
   const deltaBeta = 180 / m;
   const deltaBetaRad = deltaBeta * (Math.PI / 180);
 
-  let uv_y =  0;
+  let uv_y = 0;
   let uv_x = 0;
-  const v = 1 / m ;
+  const v = 1 / m;
   const u = 1 / n;
   for (let j = -m / 2; j < m / 2; j++) {
     const beta1 = j * deltaBetaRad;
@@ -207,10 +250,8 @@ function main() {
     const y1 = R * Math.sin(beta1);
     const y2 = R * Math.sin(beta2);
 
-
+    uv_x = 0;
     for (let i = 0; i < n; i++) {
-        
- 
       const alfa1 = i * deltaAlfa;
       const alfa1rad = alfa1 * Math.PI / 180;
       const alfa2 = (i + 1) * deltaAlfa;
@@ -237,10 +278,10 @@ function main() {
       manCoords.push(...[uv_x, uv_y]);
 
       manPosition.push(...[pnt1X, y1, pnt1Z]); //1 top
-      manCoords.push(...[uv_x+u, uv_y]);
+      manCoords.push(...[uv_x + u, uv_y]);
 
       manPosition.push(...[pnt2X, y2, pnt2Z]); //2 bottom
-      manCoords.push(...[uv_x+u, uv_y+v]);
+      manCoords.push(...[uv_x + u, uv_y + v]);
 
       normalVectors.push(...norm);
       normalVectors.push(...norm);
@@ -254,10 +295,10 @@ function main() {
       manCoords.push(...[uv_x, uv_y]);
 
       manPosition.push(...[pnt2X, y2, pnt2Z]); //2 bottom
-      manCoords.push(...[uv_x+u, uv_y+v])
+      manCoords.push(...[uv_x + u, uv_y + v])
 
       manPosition.push(...[pnt3X, y2, pnt3Z]); //3 bottom
-      manCoords.push(...[uv_x, uv_y+v])
+      manCoords.push(...[uv_x, uv_y + v])
 
       normalVectors.push(...norm);
       normalVectors.push(...norm);
@@ -266,10 +307,10 @@ function main() {
       manColor.push(...yellowClr);
       manColor.push(...yellowClr)
       manColor.push(...yellowClr)
-    }
-      console.log(uv_y);
-      uv_y += v;
       uv_x += u;
+
+    }
+    uv_y += v;
   }
 
 
@@ -282,30 +323,30 @@ function main() {
 
   [manCoordsBuffer, manCoordsNumItems, manCoordsItemSize] = initBuffer(manCoords, 2);
 
- let temp4;
+  let temp4;
 
   [normalBuffer, normalNumItems, normalItemSize] = initBuffer(normalVectors, 3);
 
 
-  //load texture
-  textureBuffer = gl.createTexture();
-  var textureImg = new Image();
-  textureImg.onload = function () {
-    gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureImg);
-    
+  /*   //load texture
+    textureBuffer = gl.createTexture();
+    var textureImg = new Image();
+    textureImg.onload = function () {
+      gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureImg);
+  
       if (isPowerOf2(textureImg.width) && isPowerOf2(textureImg.height)) {
-       // Yes, it's a power of 2. Generate mips.
-       gl.generateMipmap(gl.TEXTURE_2D);
-    } else {
-       // No, it's not a power of 2. Turn off mips and set
-       // wrapping to clamp to edge
-       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        // Yes, it's a power of 2. Generate mips.
+        gl.generateMipmap(gl.TEXTURE_2D);
+      } else {
+        // No, it's not a power of 2. Turn off mips and set
+        // wrapping to clamp to edge
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      }
     }
-  }
-  textureImg.src = "earth.jpg"
+    textureImg.src = "earth.jpg" */
 
 
 
@@ -321,20 +362,32 @@ function main() {
     0, 0, (2 * zFar * zNear) / (zFar - zNear), 0.0
   ];
 
+  planets.forEach((name, index) => {
+    console.log(name);
+    const texture = createTexture(gl, name);
+    gl.activeTexture(gl[`TEXTURE${index}`]);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), index);
+
+    textures.push(texture);
+  })
+
+
   requestAnimationFrame(tick);
 }
 function tick() {
   angleX += 0.1;
   angleY += 0.1;
-  angleZ += 0.1;
-    
-    
+  //angleZ += 0.1;
+
+
   let uMMatrix = [
     1, 0, 0, 0,
     0, 1, 0, 0,
     0, 0, 1, 0,
     0, 0, 0, 1
   ]
+
 
   let uMRotZ = [
     Math.cos(angleZ * Math.PI / 180.0), Math.sin(angleZ * Math.PI / 180.0), 0, 0,
@@ -357,31 +410,6 @@ function tick() {
     0, 0, 0, 1
   ];
 
-  let scaleMatrix = [
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1
-  ];
-
-    
-   const scaleFunc = (x) => 
-    ([
-    x, 0, 0, 0,
-    0, x, 0, 0,
-    0, 0, x, 0,
-    0, 0, 0, 1
-    ]);
-    
-   const translate3dFunc = (a=0, b=0, c=0) => 
-    ([
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    a, b, c, 1
-    ]);
-
-
   let uMScale = [
     1, 0, 0, 0,
     0, 1, 0, 0,
@@ -393,7 +421,7 @@ function tick() {
   uMMatrix = MatrixMul(uMMatrix, uMRotY);
   uMMatrix = MatrixMul(uMMatrix, uMRotZ);
 
-    
+
   // view (camera) matrice
   let uVMatrix = [
     1, 0, 0, 0,
@@ -438,11 +466,11 @@ function tick() {
   uVMatrix = MatrixMul(uVMatrix, uVTranslate);
   uVMatrix = invertMatrix(uVMatrix);
 
-//end operations of matrices
-    
-    
-    
-    
+  //end operations of matrices
+
+
+
+
   gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
   gl.clearColor(1.0, 1.0, 1.0, 1.0);
   gl.enable(gl.DEPTH_TEST);
@@ -469,7 +497,7 @@ function tick() {
   gl.enableVertexAttribArray(attribLocCoords);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-  gl.vertexAttribPointer(attribLocNormal, normalItemSize, gl.FLOAT, false, 0,0);
+  gl.vertexAttribPointer(attribLocNormal, normalItemSize, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(attribLocNormal);
 
 
@@ -478,23 +506,28 @@ function tick() {
   gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
 
   gl.uniform3f(gl.getUniformLocation(shaderProgram, "uLightPosition"), translateX, translateY, translateZ);
-     
-  gl.uniform1i(programInfo.uniformLocations.inLight, 0);  
-  drawTriangles(manNumItems)
-   //end of sun
-    
-    
-   gl.uniform1i(programInfo.uniformLocations.inLight, 1);  
 
-    planets.forEach(name => {
-        uMMatrix = MatrixMul(uMMatrix, scaleFunc(0.8))
-    uMMatrix = MatrixMul(uMMatrix, translate3dFunc(-5));  
+  gl.uniform1i(programInfo.uniformLocations.inLight, 0);
+  drawTriangles(manNumItems)
+  //end of sun
+
+
+  gl.uniform1i(programInfo.uniformLocations.inLight, 1);
+
+  planets.forEach((name, index) => {
+    console.log(name);
+    gl.activeTexture(gl[`TEXTURE${index}`]);
+    gl.bindTexture(gl.TEXTURE_2D, textures[index]);
+    gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), index);
+
+    uMMatrix = MatrixMul(uMMatrix, scaleFunc(0.8))
+    uMMatrix = MatrixMul(uMMatrix, translate3dFunc(-5));
     gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uMMatrix));
     drawTriangles(manNumItems)
-    })
+  })
 
-    
-    requestAnimationFrame(tick);
+
+  requestAnimationFrame(tick);
 }
 
 
@@ -578,7 +611,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (e.code == "ArrowRight") translateX += 0.5;
     if (e.code == "PageUp") translateY += 0.5;
     if (e.code == "PageDown") translateY -= 0.5;
-      
+
     requestAnimationFrame(tick);
   })
 })
