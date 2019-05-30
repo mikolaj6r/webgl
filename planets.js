@@ -19,6 +19,7 @@ const year = day * 365;
 
 
 const getAngle = days => 27 / (days * 10);
+const getAngleAroundSun = days => 3650 / (days * 10);
 export default [
     {
         file: 'sun.jpg',
@@ -36,7 +37,7 @@ export default [
         radius: 4878 / 2 / scale,
         ownRotate: getAngle(58.65),
         orbit: 59.9 / 2 * mlns / orbitScale,
-        //sunCircuit: 87, 969 dnia,
+        sunCircuit: getAngleAroundSun(87.969),
         inLight: 1,
         angle: 0,
         translateX: 0,
@@ -45,7 +46,7 @@ export default [
     {
         file: 'venus.jpg',
         orbit: 108.2 / 2 * mlns / orbitScale,
-        //sunCircuit: 224, 7 doby,
+        sunCircuit: getAngleAroundSun(224.7),
         ownRotate: getAngle(243),
         radius: 12104 / 2 / scale,
         inLight: 1,
@@ -56,7 +57,7 @@ export default [
     {
         file: 'earth.jpg',
         orbit: 149.6 / 2 * mlns / orbitScale,
-        //sunCircuit: 365 dni 6h,
+        sunCircuit: getAngleAroundSun(365+6/24),
         ownRotate: getAngle((23 * 60 + 56) / day),
         radius: 12752 / 2 / scale,
         inLight: 1,
@@ -67,7 +68,7 @@ export default [
     {
         file: 'mars.jpg',
         orbit: 227.9 / 2 * mlns / orbitScale,
-        //sunCircuit: 686, 738 dnia,
+        sunCircuit: getAngleAroundSun(686.738),
         ownRotate: getAngle((24 * 60 + 37) / day),
         radius: 6788 / 2 / scale,
         inLight: 1,
@@ -78,7 +79,7 @@ export default [
     {
         file: 'jupiter.jpg',
         orbit: 778.3 / 2 * mlns / orbitScale,
-        //sunCircuit: 11 lat 315 dni,
+        sunCircuit: getAngleAroundSun(11*365+315),
         ownRotate: getAngle((9 * 60 + 48) / day),
         radius: 142800 / 2 / scale,
         inLight: 1,
@@ -89,7 +90,7 @@ export default [
     {
         file: 'saturn.jpg',
         orbit: 1427 / 2 * mlns / orbitScale,
-        //sunCircuit: 29 lat 167 dni,
+        sunCircuit: getAngleAroundSun(29*365+167),
         ownRotate: getAngle((10 * 60 + 14) / day),
         radius: 120660 / 2 / scale,
         inLight: 1,
@@ -100,7 +101,7 @@ export default [
     {
         file: 'uranus.jpg',
         orbit: 2870 / 2 * mlns / orbitScale,
-        //sunCircuit: 84, 014 lat,
+        sunCircuit: getAngleAroundSun(84.014*365),
         ownRotate: getAngle((10 * 60 + 49) / day),
         radius: 51108 / 2 / scale,
         inLight: 1,
@@ -111,7 +112,7 @@ export default [
     {
         file: 'neptune.jpg',
         orbit: 4497 / 2 * mlns / orbitScale,
-        //sunCircuit: 164, 78 lat,
+        sunCircuit: getAngleAroundSun(164.78*365),
         ownRotate: getAngle((15 * 60 + 40) / day),
         radius: 49530 / 2 / scale,
         inLight: 1,

@@ -17,7 +17,7 @@ import {
 } from './utils'
 
 import planets from './planets'
-
+//let planets = [];
 var gl;
 var shaderProgram;
 var uPMatrix;
@@ -40,9 +40,9 @@ var angleVX = 180.0;
 var translateX = 0.0;
 var translateY = 0.0;
 var translateZ = -3.0;
-var translateVX = 0.0;
+var translateVX = 30.0;
 var translateVY = 0.0;
-var translateVZ = 0.0;
+var translateVZ = 10.0;
 
 let textures = [];
 const yellowClr = [1, 1, 0];
@@ -228,15 +228,14 @@ function main() {
 
     void main(){
         gl_Position = uPMatrix * uVMatrix  * uMMatrix * vec4(aVertexPosition, 1.0);
-        vNormal = mat3(uMMatrixInverseTranspose) * aNormals;
 
-        vec3 surfaceWorldPosition = (uMMatrix * vec4(vPosition, 1.0)).xyz;
-        v_surfaceToLight = uLightPosition - surfaceWorldPosition;
-        //v_surfaceToView = u_viewWorldPosition - surfaceWorldPosition;
+        vNormal = mat3(uMMatrixInverseTranspose) * aNormals;
+        vec3 surfaceWorldPosition = (uMMatrix * vec4(aVertexPosition, 1.0)).xyz;
+        v_surfaceToLight =  surfaceWorldPosition - uLightPosition;
+
 
         vColor = aVertexColor;
         vTexUV = aVertexCoords;
-
         vPosition = aVertexPosition;
 
     }
@@ -261,24 +260,13 @@ function main() {
 
       vec3 normal = normalize(vNormal);
       vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
-      //vec3 surfaceToViewDirection = normalize(v_surfaceToView);
-      //vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection);
-
-
 
       float light = dot(normal, surfaceToLightDirection);
-      //float specular = dot(normal, halfVector);
+
+      gl_FragColor = texture2D(uSampler, vTexUV);
 
         if(inLight){
-          gl_FragColor = vec4(vColor, 1.0);
- 
           gl_FragColor.rgb *= light;
-          //gl_FragColor.rgb = vec3(light, light, light);
-
-          //gl_FragColor  = gl_FragColor * texture2D(uSampler, vTexUV);
-        }
-        else{
-          gl_FragColor = texture2D(uSampler, vTexUV);
         }
     }
   `;
@@ -379,9 +367,9 @@ function render() {
   gl.vertexAttribPointer(programInfo.attribLocations.normals, normalItemSize, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(programInfo.attribLocations.normals);
 
-  gl.uniform3f(programInfo.uniformLocations.lightPosition, translateX, translateY, translateZ);
-  gl.uniform3fv(
-    programInfo.uniformLocations.viewWorldPosition, [translateVX, translateVY, translateVZ]);
+  gl.uniform3fv(programInfo.uniformLocations.lightPosition, [translateX, translateY, translateZ]);
+  //gl.uniform3fv(
+   // programInfo.uniformLocations.viewWorldPosition, [-translateVX, translateVY, translateVZ]);
 
   planets.forEach((el, index) => {
     gl.activeTexture(gl[`TEXTURE${index}`]);
@@ -389,23 +377,23 @@ function render() {
     gl.uniform1i(programInfo.uniformLocations.sampler, index);
     gl.uniform1i(programInfo.uniformLocations.inLight, el.inLight);
 
-    let temp_x = 0, temp_y = 0;
-    //planets[index].translateX += ;
-    //planets[index].translateZ += 60;
-    //let date = Date.now() * 0.0001;
-    //temp_x = Math.cos(date) * el.orbit;
-    //temp_y = Math.sin(date) * el.orbit;
+    let temp_x = 0, temp_y = 0, temp_z = 0;
+    let date = Date.now() * 0.0001;
+    temp_x = Math.cos(date * el.sunCircuit) * (el.orbit - el.radius);
+    temp_z = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
+    //temp_y = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
     planets[index].angle += el.ownRotate;
 
     let uModelMatrix = identity3dMat();
     uModelMatrix = MatrixMul(uModelMatrix, rotate3d(el.angle));
-
     uModelMatrix = MatrixMul(uModelMatrix, scale3dMat(el.radius));
-    uModelMatrix = MatrixMul(uModelMatrix, translate3dMat(el.orbit, 0, temp_y));
+    uModelMatrix = MatrixMul(uModelMatrix, translate3dMat(temp_x, temp_y, temp_z));
     gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uModelMatrix));
 
-    var worldInverseMatrix = invert1dMat(uModelMatrix);
-    var worldInverseTransposeMatrix = transpose1dMat(worldInverseMatrix);
+    let worldInverseMatrix = invert1dMat(uModelMatrix);
+    let worldInverseTransposeMatrix = transpose1dMat(worldInverseMatrix);
+
+
 
     gl.uniformMatrix4fv(
       programInfo.uniformLocations.mMatrixInverseTranspose, false,
@@ -413,14 +401,16 @@ function render() {
 
     drawTriangles(manNumItems)
   })
+    
   //point light
-  let uModelMatrix = identity3dMat();
-  uModelMatrix = MatrixMul(uModelMatrix, scale3dMat(1));
-  uModelMatrix = MatrixMul(uModelMatrix, translate3dMat(translateX, translateY, translateZ));
-  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uModelMatrix));
-  gl.uniform1i(programInfo.uniformLocations.inLight, 0);
-  drawTriangles(manNumItems)
-
+  //let uModelMatrix = identity3dMat();
+  //uModelMatrix = MatrixMul(uModelMatrix, scale3dMat(0.05));
+  //uModelMatrix = MatrixMul(uModelMatrix, translate3dMat(translateX, translateY, translateZ));
+  //gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uModelMatrix));
+  //gl.uniform1i(programInfo.uniformLocations.inLight, 0);
+  //drawTriangles(manNumItems)
+    
+    
 }
 
 function drawTriangles(size) {
@@ -500,10 +490,9 @@ window.addEventListener("DOMContentLoaded", () => {
     if (e.code == "ArrowDown") translateY -= 0.5;
     if (e.code == "ArrowLeft") translateX -= 0.5;
     if (e.code == "ArrowRight") translateX += 0.5;
-    if (e.code == "PageUp") translateZ += 0.5;
-    if (e.code == "PageDown") translateZ -= 0.5;
+    if (e.code == "Equal") translateZ += 0.5;
+    if (e.code == "Minus") translateZ -= 0.5;
 
-    console.log(translateX, translateY, translateZ)
   })
   main();
 
