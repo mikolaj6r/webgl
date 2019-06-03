@@ -17,7 +17,6 @@ import {
 } from './utils'
 
 import planets from './planets'
-//let planets = [];
 var gl;
 var shaderProgram;
 var uPMatrix;
@@ -40,17 +39,17 @@ var angleVX = 180.0;
 var translateX = 0.0;
 var translateY = 0.0;
 var translateZ = -3.0;
-var translateVX = 30.0;
+var translateVX = 50.0;
 var translateVY = 0.0;
-var translateVZ = 10.0;
+var translateVZ = -90.0;
 
 let textures = [];
 const yellowClr = [1, 1, 0];
+let moveAroundSun = 1;
 
 function createTexture(gl, url) {
   const textureBuffer = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
-
+  gl.bindTexture(gl.TEXTURE_2D, textureBuffer);  
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
     1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
     new Uint8Array([0, 0, 255, 255]));
@@ -322,11 +321,21 @@ function main() {
   normalBuffer = temp[0]; normalItemSize = temp[2];
 
 
-  planets.forEach(el => {
+  planets.forEach((el, index) => {
+    gl.activeTexture(gl[`TEXTURE${textures.length}`]);
+      
     const texture = createTexture(gl, el.file);
     textures.push(texture);
+      
+    el.orbits.forEach( (orb, ind) => {
+        gl.activeTexture(gl[`TEXTURE${textures.length}`]);
+        const orbTexture = createTexture(gl, orb.file);
+        textures.push(orbTexture);
+    });
+    
   })
 
+  console.log(gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS));
   requestAnimationFrame(animate);
 }
 
@@ -371,23 +380,30 @@ function render() {
   //gl.uniform3fv(
    // programInfo.uniformLocations.viewWorldPosition, [-translateVX, translateVY, translateVZ]);
 
+  let i= 0;
   planets.forEach((el, index) => {
-    gl.activeTexture(gl[`TEXTURE${index}`]);
-    gl.bindTexture(gl.TEXTURE_2D, textures[index]);
-    gl.uniform1i(programInfo.uniformLocations.sampler, index);
+    //gl.activeTexture(gl[`TEXTURE${index}`]);
+    //gl.bindTexture(gl.TEXTURE_2D, textures[index]);
+    gl.uniform1i(programInfo.uniformLocations.sampler, i++);
     gl.uniform1i(programInfo.uniformLocations.inLight, el.inLight);
 
-    let temp_x = 0, temp_y = 0, temp_z = 0;
+    let tempX = 0, tempY = 0, tempZ = 0;
     let date = Date.now() * 0.0001;
-    temp_x = Math.cos(date * el.sunCircuit) * (el.orbit - el.radius);
-    temp_z = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
-    //temp_y = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
+    if(moveAroundSun){
+        tempX = Math.cos(date * el.sunCircuit) * (el.orbit - el.radius);
+        tempZ = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
+        //temp_y = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
+    } 
+    else{
+        tempX = el.orbit;
+        tempZ = 0;
+    }
     planets[index].angle += el.ownRotate;
 
     let uModelMatrix = identity3dMat();
     uModelMatrix = MatrixMul(uModelMatrix, rotate3d(el.angle));
     uModelMatrix = MatrixMul(uModelMatrix, scale3dMat(el.radius));
-    uModelMatrix = MatrixMul(uModelMatrix, translate3dMat(temp_x, temp_y, temp_z));
+    uModelMatrix = MatrixMul(uModelMatrix, translate3dMat(tempX, tempY, tempZ));
     gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uModelMatrix));
 
     let worldInverseMatrix = invert1dMat(uModelMatrix);
@@ -400,17 +416,36 @@ function render() {
       worldInverseTransposeMatrix);
 
     drawTriangles(manNumItems)
+      
+    el.orbits.forEach( (orb, ind) => {
+        gl.uniform1i(programInfo.uniformLocations.sampler, i++);
+        gl.uniform1i(programInfo.uniformLocations.inLight, el.inLight);
+
+        let tempOrbX = 0, tempOrbY = 0, tempOrbZ = 0;
+        let dateOrb = Date.now() * 0.0001;
+        tempOrbX = Math.cos(dateOrb * orb.planetCircuit) * (orb.orbit - orb.radius);
+        tempOrbZ = Math.sin(dateOrb * orb.planetCircuit) * (orb.orbit + orb.radius);
+        //temp_y = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
+
+        planets[index].orbits[ind].angle += orb.ownRotate;
+
+        let uOrbMatrix = identity3dMat();
+        uOrbMatrix = MatrixMul(uOrbMatrix, rotate3d(orb.angle));
+        uOrbMatrix = MatrixMul(uOrbMatrix, scale3dMat(orb.radius));
+        uOrbMatrix = MatrixMul(uOrbMatrix, translate3dMat(tempX +tempOrbX , tempOrbY, tempZ + tempOrbZ));
+        gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uOrbMatrix));
+
+        let worldInverseMatrixOrb = invert1dMat(uOrbMatrix);
+        let worldInverseTransposeMatrixOrb = transpose1dMat(worldInverseMatrixOrb);
+
+        gl.uniformMatrix4fv(
+          programInfo.uniformLocations.mMatrixInverseTranspose, false,
+          worldInverseTransposeMatrixOrb);
+
+        drawTriangles(manNumItems)  
+     })
   })
-    
-  //point light
-  //let uModelMatrix = identity3dMat();
-  //uModelMatrix = MatrixMul(uModelMatrix, scale3dMat(0.05));
-  //uModelMatrix = MatrixMul(uModelMatrix, translate3dMat(translateX, translateY, translateZ));
-  //gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uModelMatrix));
-  //gl.uniform1i(programInfo.uniformLocations.inLight, 0);
-  //drawTriangles(manNumItems)
-    
-    
+      
 }
 
 function drawTriangles(size) {
@@ -492,6 +527,8 @@ window.addEventListener("DOMContentLoaded", () => {
     if (e.code == "ArrowRight") translateX += 0.5;
     if (e.code == "Equal") translateZ += 0.5;
     if (e.code == "Minus") translateZ -= 0.5;
+      
+    if(e.code == "Space") moveAroundSun = !moveAroundSun;  
 
   })
   main();
