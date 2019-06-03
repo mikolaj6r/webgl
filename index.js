@@ -41,7 +41,7 @@ var translateY = 0.0;
 var translateZ = -3.0;
 var translateVX = 50.0;
 var translateVY = 0.0;
-var translateVZ = -90.0;
+var translateVZ = -120.0;
 
 let textures = [];
 const yellowClr = [1, 1, 0];
