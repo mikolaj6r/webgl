@@ -14,9 +14,9 @@
 import {
   invert1dMat, CrossProduct, Normalize, isPowerOf2, MatrixMul, transpose1dMat, scale3dMat,
   translate3dMat, identity3dMat, rotateX, rotateY, rotateZ, rotate3d
-} from './utils'
+} from './utils.js'
 
-import planets from './planets'
+import planets from './planets.js'
 var gl;
 var shaderProgram;
 var uPMatrix;
@@ -164,16 +164,17 @@ function createSphere(R = 5, n = 32, m = 32) { // radius, num in width, num in h
 
 function main() {
   const canv = document.getElementById("canvas");
-  gl = null;
   try {
     gl = canv.getContext("experimental-webgl");
-  } catch (e) { }
-  if (!gl) alert("webgl not found");
+  } catch (e) { 
+      alert("webgl not found");
+  }
 
-  gl.viewportWidth = canv.width = document.documentElement.clientWidth;
-  gl.viewportHeight = canv.height = document.documentElement.clientHeight;
 
-  const aspect = gl.viewportWidth / gl.viewportHeight;
+  canv.width = document.documentElement.clientWidth;
+  canv.height = document.documentElement.clientHeight;
+    
+  const aspect = canvas.clientWidth / canvas.clientHeight;
   let fov = 45.0 * Math.PI / 180.0;
   let zFar = 2000.0;
   let zNear = 1;
@@ -186,10 +187,10 @@ function main() {
   ];
 
   window.onresize = function () {
-    gl.viewportWidth = canv.width = document.documentElement.clientWidth;
-    gl.viewportHeight = canv.height = document.documentElement.clientHeight;
+    canv.width = document.documentElement.clientWidth;
+    canv.height = document.documentElement.clientHeight;
 
-    const aspect = gl.viewportWidth / gl.viewportHeight;
+    const aspect = canvas.clientWidth / canvas.clientHeight;
 
     uPMatrix = [
       1.0 / (aspect * Math.tan(fov / 2)), 0, 0, 0,
@@ -202,7 +203,7 @@ function main() {
   const vsSource = `
     precision mediump float;
 
-    attribute lowp vec3 aVertexColor; // attributes are read-only
+    //attribute highp vec3 aVertexColor;
     attribute highp vec3 aVertexPosition;
     attribute vec2 aVertexCoords;
     attribute vec3 aNormals;
@@ -210,32 +211,26 @@ function main() {
     uniform highp mat4 uMMatrix;// uniforms are read-only and shared vs and fs
     uniform highp mat4 uPMatrix;
     uniform highp mat4 uVMatrix;
-    uniform mat4 uMMatrixInverseTranspose;
 
     uniform bool inLight;
 
-    varying lowp vec3 vColor; // varying are shared vs and fs
-    varying vec2 vTexUV;
+    varying vec2 vTexUV; // varying are shared vs and fs
     varying vec3 vNormal;
-    varying vec3 vPosition;
 
     uniform vec3 uLightPosition;
-    uniform vec3 u_viewWorldPosition;
+    uniform mat4 uMMatrixInverseTranspose;
 
     varying vec3 v_surfaceToLight;
-    varying vec3 v_surfaceToView;
 
     void main(){
         gl_Position = uPMatrix * uVMatrix  * uMMatrix * vec4(aVertexPosition, 1.0);
-
-        vNormal = mat3(uMMatrixInverseTranspose) * aNormals;
-        vec3 surfaceWorldPosition = (uMMatrix * vec4(aVertexPosition, 1.0)).xyz;
-        v_surfaceToLight =  surfaceWorldPosition - uLightPosition;
-
-
-        vColor = aVertexColor;
         vTexUV = aVertexCoords;
-        vPosition = aVertexPosition;
+              
+        if(inLight){
+            vNormal = mat3(uMMatrixInverseTranspose) * aNormals;
+            vec3 surfaceWorldPosition = (uMMatrix * vec4(aVertexPosition, 1.0)).xyz;
+            v_surfaceToLight =  surfaceWorldPosition - uLightPosition;
+        }
 
     }
 
@@ -244,29 +239,24 @@ function main() {
   const fsSource = `
     precision mediump float;
 
-    varying lowp vec3 vColor;
     varying vec2 vTexUV;
     varying vec3 vNormal;
-    varying vec3 vPosition;
     uniform sampler2D uSampler;
     uniform vec3 uLightPosition;
     uniform bool inLight;
 
     varying vec3 v_surfaceToLight;
-    varying vec3 v_surfaceToView;
 
     void main(){
 
-      vec3 normal = normalize(vNormal);
-      vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
-
-      float light = dot(normal, surfaceToLightDirection);
-
       gl_FragColor = texture2D(uSampler, vTexUV);
 
-        if(inLight){
-          gl_FragColor.rgb *= light;
-        }
+      if(inLight){
+        vec3 normal = normalize(vNormal);
+        vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
+        float light = dot(normal, surfaceToLightDirection);
+        gl_FragColor.rgb *= light;
+      }
     }
   `;
 
@@ -320,22 +310,27 @@ function main() {
   temp = initBuffer(normalVectors, 3);
   normalBuffer = temp[0]; normalItemSize = temp[2];
 
+   
 
+  gl.activeTexture(gl.TEXTURE0);
+
+  const skyTexture = createTexture(gl, "sky.jpg");
+  textures.push(skyTexture);
+    
   planets.forEach((el, index) => {
-    gl.activeTexture(gl[`TEXTURE${textures.length}`]);
+    gl.activeTexture(gl.TEXTURE0 + textures.length);
       
-    const texture = createTexture(gl, el.file);
-    textures.push(texture);
+    const planetTexture = createTexture(gl, el.file);
+    textures.push(planetTexture);
       
     el.orbits.forEach( (orb, ind) => {
-        gl.activeTexture(gl[`TEXTURE${textures.length}`]);
+        gl.activeTexture(gl.TEXTURE0 + textures.length);
         const orbTexture = createTexture(gl, orb.file);
         textures.push(orbTexture);
     });
     
   })
 
-  console.log(gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS));
   requestAnimationFrame(animate);
 }
 
@@ -346,10 +341,9 @@ function animate() {
 
 function render() {
 
-  gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
   gl.clearColor(0.0, 0.0, 0.0, 0.9);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  //gl.enable(gl.CULL_FACE);
   gl.enable(gl.DEPTH_TEST);
   gl.useProgram(shaderProgram);
 
@@ -366,8 +360,16 @@ function render() {
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, new Float32Array(uPMatrix));
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, new Float32Array(uVMatrix));
 
-  switchBuffers(programInfo, manVertBuffer, manColorBuffer, manNumItems, manItemSize)
+  //switchBuffers(programInfo, manVertBuffer, manColorBuffer, manNumItems, manItemSize)
+  gl.bindBuffer(gl.ARRAY_BUFFER, manVertBuffer);
+  gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, manItemSize, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
 
+  //gl.bindBuffer(gl.ARRAY_BUFFER, manColorBuffer);
+  //gl.vertexAttribPointer(gl.getAttribLocation(shaderProgram, 'aVertexColor'), 9, gl.FLOAT, false, 0, 0);
+  //gl.enableVertexAttribArray(gl.getAttribLocation(shaderProgram, 'aVertexColor'));
+
+    
   gl.bindBuffer(gl.ARRAY_BUFFER, manCoordsBuffer);
   gl.vertexAttribPointer(programInfo.attribLocations.vertexCoords, manCoordsItemSize, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(programInfo.attribLocations.vertexCoords);
@@ -377,13 +379,21 @@ function render() {
   gl.enableVertexAttribArray(programInfo.attribLocations.normals);
 
   gl.uniform3fv(programInfo.uniformLocations.lightPosition, [translateX, translateY, translateZ]);
-  //gl.uniform3fv(
-   // programInfo.uniformLocations.viewWorldPosition, [-translateVX, translateVY, translateVZ]);
 
-  let i= 0;
+    
+   let i= 0;
+  //sky
+  gl.uniform1i(programInfo.uniformLocations.sampler, i++);
+  gl.uniform1i(programInfo.uniformLocations.inLight, 0);
+
+  let uSkyModelMatrix = identity3dMat();
+  uSkyModelMatrix = MatrixMul(uSkyModelMatrix, scale3dMat(100));
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uSkyModelMatrix));
+  drawTriangles(manNumItems)
+    
+    
+   
   planets.forEach((el, index) => {
-    //gl.activeTexture(gl[`TEXTURE${index}`]);
-    //gl.bindTexture(gl.TEXTURE_2D, textures[index]);
     gl.uniform1i(programInfo.uniformLocations.sampler, i++);
     gl.uniform1i(programInfo.uniformLocations.inLight, el.inLight);
 
@@ -392,7 +402,7 @@ function render() {
     if(moveAroundSun){
         tempX = Math.cos(date * el.sunCircuit) * (el.orbit - el.radius);
         tempZ = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
-        //temp_y = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
+        //tempY = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
     } 
     else{
         tempX = el.orbit;
@@ -406,15 +416,13 @@ function render() {
     uModelMatrix = MatrixMul(uModelMatrix, translate3dMat(tempX, tempY, tempZ));
     gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uModelMatrix));
 
-    let worldInverseMatrix = invert1dMat(uModelMatrix);
-    let worldInverseTransposeMatrix = transpose1dMat(worldInverseMatrix);
-
-
-
-    gl.uniformMatrix4fv(
-      programInfo.uniformLocations.mMatrixInverseTranspose, false,
-      worldInverseTransposeMatrix);
-
+    if(el.inLight){
+        let worldInverseMatrix = invert1dMat(uModelMatrix);
+        let worldInverseTransposeMatrix = transpose1dMat(worldInverseMatrix);
+        gl.uniformMatrix4fv(
+        programInfo.uniformLocations.mMatrixInverseTranspose, false,
+        worldInverseTransposeMatrix);
+    }
     drawTriangles(manNumItems)
       
     el.orbits.forEach( (orb, ind) => {
@@ -425,7 +433,7 @@ function render() {
         let dateOrb = Date.now() * 0.0001;
         tempOrbX = Math.cos(dateOrb * orb.planetCircuit) * (orb.orbit - orb.radius);
         tempOrbZ = Math.sin(dateOrb * orb.planetCircuit) * (orb.orbit + orb.radius);
-        //temp_y = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
+        //tempOrbY = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
 
         planets[index].orbits[ind].angle += orb.ownRotate;
 
@@ -435,13 +443,15 @@ function render() {
         uOrbMatrix = MatrixMul(uOrbMatrix, translate3dMat(tempX +tempOrbX , tempOrbY, tempZ + tempOrbZ));
         gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uOrbMatrix));
 
-        let worldInverseMatrixOrb = invert1dMat(uOrbMatrix);
-        let worldInverseTransposeMatrixOrb = transpose1dMat(worldInverseMatrixOrb);
+        
+        if(el.inLight){
+            let worldInverseMatrixOrb = invert1dMat(uOrbMatrix);
+            let worldInverseTransposeMatrixOrb = transpose1dMat(worldInverseMatrixOrb);
 
-        gl.uniformMatrix4fv(
-          programInfo.uniformLocations.mMatrixInverseTranspose, false,
-          worldInverseTransposeMatrixOrb);
-
+            gl.uniformMatrix4fv(
+            programInfo.uniformLocations.mMatrixInverseTranspose, false,
+            worldInverseTransposeMatrixOrb);
+        }
         drawTriangles(manNumItems)  
      })
   })

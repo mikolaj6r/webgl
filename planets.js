@@ -1,16 +1,3 @@
-/*
-
-schema for planet : {
-        file: `${name}.jpg`,
-        radius: radiusInKm/sunRadiusInKm,
-        ownRotate: ok. 27 dni,
-        orbit: 0,
-        sunCircuit: 0,
-}
-
-1 min = 1 year
-1sec = 60 * 24 * 365
-*/
 
 const scale = 100000;
 const mlns = 1000000;
@@ -20,6 +7,7 @@ const year = day * 365;
 
 const getAngle = days => 27 / (days * 10);
 const getAngleAroundSun = days => 3650 / (days * 10);
+
 export default [
     {
         file: 'sun.jpg',
