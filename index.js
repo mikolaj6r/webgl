@@ -540,6 +540,14 @@ window.addEventListener("DOMContentLoaded", () => {
       
     if(e.code == "Space") moveAroundSun = !moveAroundSun;  
 
+          let i=1;
+    planets.forEach(el => {
+      if(e.code == `Digit${i++}`){
+         translateVX = el.orbit;  
+         translateVZ = -10;  
+      }
+ 
+    });
   })
   main();
 
