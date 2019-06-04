@@ -13,10 +13,13 @@
 
 import {
   invert1dMat, CrossProduct, Normalize, isPowerOf2, MatrixMul, transpose1dMat, scale3dMat,
-  translate3dMat, identity3dMat, rotateX, rotateY, rotateZ, rotate3d
+  translate3dMat, identity3dMat, rotateX, rotateY, rotateZ, rotate3d, createTexture
 } from './utils.js'
 
-import planets from './planets.js'
+//import { createHuman } from './human.js'
+import { createSphere, genPointCloud, genPointColors, genPointNormals, genPointCoords, updatePosition,
+       createTriangle, createVelocity} from './geometry.js'
+
 var gl;
 var shaderProgram;
 var uPMatrix;
@@ -29,6 +32,15 @@ var manCoordsBuffer;
 var manCoordsItemSize;
 var normalBuffer;
 var normalItemSize;
+
+var vertexPointCloudPositionBuffer;
+var vertexPointCloudColorBuffer;
+var vertexPointCloudCoordsBuffer;
+var vertexPointCloudNormalBuffer;
+
+  let PointCloudPosition;
+
+let prevTime;
 
 var programInfo;
 
@@ -47,120 +59,6 @@ let textures = [];
 const yellowClr = [1, 1, 0];
 let moveAroundSun = 1;
 
-function createTexture(gl, url) {
-  const textureBuffer = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, textureBuffer);  
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
-    1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
-    new Uint8Array([0, 0, 255, 255]));
-
-  var textureImg = new Image();
-  textureImg.onload = function () {
-    gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureImg);
-
-    if (isPowerOf2(textureImg.width) && isPowerOf2(textureImg.height)) {
-      // Yes, it's a power of 2. Generate mips.
-      gl.generateMipmap(gl.TEXTURE_2D);
-    } else {
-      // No, it's not a power of 2. Turn off mips and set
-      // wrapping to clamp to edge
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    }
-  }
-  textureImg.src = url;
-
-  return textureBuffer;
-}
-
-function createSphere(R = 5, n = 32, m = 32) { // radius, num in width, num in height
-
-  let position = [], colors = [], coords = [], normals = [];
-  const deltaAlfa = 360 / n;
-  const deltaBeta = 180 / m;
-  const deltaBetaRad = deltaBeta * (Math.PI / 180);
-
-  let uv_y = 0;
-  let uv_x = 0;
-
-  const v = 1 / m;
-  const u = 1 / n;
-  for (let j = -m / 2; j < m / 2; j++) {
-    const beta1 = j * deltaBetaRad;
-    const beta2 = (j + 1) * deltaBetaRad;
-
-    const r1 = R * Math.cos(beta1);
-    const r2 = R * Math.cos(beta2);
-    const y1 = R * Math.sin(beta1);
-    const y2 = R * Math.sin(beta2);
-
-    uv_x = 0;
-    for (let i = 0; i < n; i++) {
-      const alfa1 = i * deltaAlfa;
-      const alfa1rad = alfa1 * Math.PI / 180;
-      const alfa2 = (i + 1) * deltaAlfa;
-      const alfa2rad = alfa2 * Math.PI / 180;
-
-      const pnt0X = r1 * Math.cos(alfa1rad);
-      const pnt0Z = r1 * Math.sin(alfa1rad);
-
-      const pnt1X = r1 * Math.cos(alfa2rad);
-      const pnt1Z = r1 * Math.sin(alfa2rad);
-
-      const pnt2X = r2 * Math.cos(alfa2rad);
-      const pnt2Z = r2 * Math.sin(alfa2rad);
-
-      const pnt3X = r2 * Math.cos(alfa1rad);
-      const pnt3Z = r2 * Math.sin(alfa1rad);
-
-      const vecA = [pnt1X - pnt0X, y1 - y1, pnt1Z - pnt0Z];
-      const vecB = [pnt3X - pnt0X, y2 - y1, pnt3Z - pnt0Z];
-      const norm = Normalize(CrossProduct(vecA, vecB));
-
-
-      position.push(...[pnt0X, y1, pnt0Z]); //0 top
-      coords.push(...[uv_x, uv_y]);
-
-      position.push(...[pnt1X, y1, pnt1Z]); //1 top
-      coords.push(...[uv_x + u, uv_y]);
-
-      position.push(...[pnt2X, y2, pnt2Z]); //2 bottom
-      coords.push(...[uv_x + u, uv_y + v]);
-
-      normals.push(...norm);
-      normals.push(...norm);
-      normals.push(...norm);
-
-      colors.push(...yellowClr);
-      colors.push(...yellowClr)
-      colors.push(...yellowClr)
-
-      position.push(...[pnt0X, y1, pnt0Z]); //0 top
-      coords.push(...[uv_x, uv_y]);
-
-      position.push(...[pnt2X, y2, pnt2Z]); //2 bottom
-      coords.push(...[uv_x + u, uv_y + v])
-
-      position.push(...[pnt3X, y2, pnt3Z]); //3 bottom
-      coords.push(...[uv_x, uv_y + v])
-
-      normals.push(...norm);
-      normals.push(...norm);
-      normals.push(...norm);
-
-      colors.push(...yellowClr);
-      colors.push(...yellowClr)
-      colors.push(...yellowClr)
-      uv_x += u;
-
-    }
-    uv_y += v;
-  }
-
-  return [position, colors, coords, normals];
-}
 
 function main() {
   const canv = document.getElementById("canvas");
@@ -207,6 +105,7 @@ function main() {
     attribute highp vec3 aVertexPosition;
     attribute vec2 aVertexCoords;
     attribute vec3 aNormals;
+    attribute vec3 aVertexColor;
 
     uniform highp mat4 uMMatrix;// uniforms are read-only and shared vs and fs
     uniform highp mat4 uPMatrix;
@@ -216,6 +115,7 @@ function main() {
 
     varying vec2 vTexUV; // varying are shared vs and fs
     varying vec3 vNormal;
+    varying vec3 vColor;
 
     uniform vec3 uLightPosition;
     uniform mat4 uMMatrixInverseTranspose;
@@ -224,13 +124,14 @@ function main() {
 
     void main(){
         gl_Position = uPMatrix * uVMatrix  * uMMatrix * vec4(aVertexPosition, 1.0);
-        vTexUV = aVertexCoords;
+        //vTexUV = aVertexCoords;
               
-        if(inLight){
-            vNormal = mat3(uMMatrixInverseTranspose) * aNormals;
-            vec3 surfaceWorldPosition = (uMMatrix * vec4(aVertexPosition, 1.0)).xyz;
-            v_surfaceToLight =  surfaceWorldPosition - uLightPosition;
-        }
+        vColor = aVertexColor;
+        //if(inLight){
+        //    vNormal = mat3(uMMatrixInverseTranspose) * aNormals;
+        //    vec3 surfaceWorldPosition = (uMMatrix * vec4(aVertexPosition, 1.0)).xyz;
+        //    v_surfaceToLight =  surfaceWorldPosition - uLightPosition;
+        //        }
 
     }
 
@@ -241,6 +142,7 @@ function main() {
 
     varying vec2 vTexUV;
     varying vec3 vNormal;
+    varying vec3 vColor;
     uniform sampler2D uSampler;
     uniform vec3 uLightPosition;
     uniform bool inLight;
@@ -249,14 +151,16 @@ function main() {
 
     void main(){
 
-      gl_FragColor = texture2D(uSampler, vTexUV);
+      //gl_FragColor = texture2D(uSampler, vTexUV);
 
-      if(inLight){
-        vec3 normal = normalize(vNormal);
-        vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
-        float light = dot(normal, surfaceToLightDirection);
-        gl_FragColor.rgb *= light;
-      }
+      //if(inLight){
+        //vec3 normal = normalize(vNormal);
+        //vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
+        //float light = dot(normal, surfaceToLightDirection);
+        //gl_FragColor.rgb *= light;
+        //     gl_FragColor = vec4(vColor, 1.0);
+        //  }
+        gl_FragColor = vec4(vColor, 1.0);
     }
   `;
 
@@ -287,50 +191,51 @@ function main() {
   var manCoords = [];
   var manColor = [];
   var normalVectors = [];
+    
+  var vertexPointCloudPosition = [];
+  var vertexPointCloudCoords = [];
+  var vertexPointCloudColor = [];
+  var vertexPointCloudNormals = [];
 
-  // create Sphere
+  // create cloud point
   {
-    let [position, colors, coords, normals] = createSphere(5, 50, 50);
-    manPosition.push(...position);
-    manCoords.push(...coords);
-    manColor.push(...colors);
-    normalVectors.push(...normals);
+    let temp1 = genPointColors(5);
+    let temp2 = genPointCoords(5);
+    let temp3 = genPointNormals(5);
+      
+    vertexPointCloudColor.push(...temp1);
+    vertexPointCloudCoords.push(...temp2);
+    vertexPointCloudNormals.push(...temp3);
   }
 
+    
   let temp;
 
-  temp = initBuffer(manPosition, 3);
-  manVertBuffer = temp[0]; manNumItems = temp[1]; manItemSize = temp[2];
-  temp = initBuffer(manColor, 3)
-  manColorBuffer = temp[0];
+  temp = initBuffer(vertexPointCloudColor, 3);
+  vertexPointCloudColorBuffer = temp[0]; manNumItems = temp[1]; manItemSize = temp[2];
+    
 
-  temp = initBuffer(manCoords, 2);
-  manCoordsBuffer = temp[0]; manCoordsItemSize = temp[2];
+  temp = initBuffer(vertexPointCloudCoords, 2);
+  vertexPointCloudCoordsBuffer = temp[0]; manCoordsItemSize = temp[2];
 
-  temp = initBuffer(normalVectors, 3);
-  normalBuffer = temp[0]; normalItemSize = temp[2];
+  temp = initBuffer(vertexPointCloudNormals, 3);
+  vertexPointCloudNormalBuffer = temp[0];
 
-   
-
+      
+  temp = genPointCloud(5);
+  PointCloudPosition = temp;
+    
+  temp = createTriangle(PointCloudPosition, 5, -2); 
+  vertexPointCloudPosition = temp;  
+    
+    
+  temp = createVelocity(5);
+  let PointCloudVelocity = temp;
+    
   gl.activeTexture(gl.TEXTURE0);
-
-  const skyTexture = createTexture(gl, "sky.jpg");
-  textures.push(skyTexture);
+  const humanTexture = createTexture(gl, "texture.png");
+  textures.push(humanTexture);
     
-  planets.forEach((el, index) => {
-    gl.activeTexture(gl.TEXTURE0 + textures.length);
-      
-    const planetTexture = createTexture(gl, el.file);
-    textures.push(planetTexture);
-      
-    el.orbits.forEach( (orb, ind) => {
-        gl.activeTexture(gl.TEXTURE0 + textures.length);
-        const orbTexture = createTexture(gl, orb.file);
-        textures.push(orbTexture);
-    });
-    
-  })
-
   requestAnimationFrame(animate);
 }
 
@@ -346,8 +251,6 @@ function render() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
   gl.useProgram(shaderProgram);
-
-
   gl.depthFunc(gl.LEQUAL);
 
 
@@ -359,107 +262,60 @@ function render() {
   //pass matrices
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, new Float32Array(uPMatrix));
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, new Float32Array(uVMatrix));
+  gl.uniform3fv(programInfo.uniformLocations.lightPosition, [translateX, translateY, translateZ]); 
+    
+    
+   //update
+  let now = Date.now();
+  let dt = now - prevTime;
+  prevTime = now;
+  let velocity = createVelocity(5);
+  PointCloudPosition = updatePosition(PointCloudPosition, velocity, 5, dt);
+  console.log(PointCloudPosition);
+   //create
+  let vertexPointCloudPosition = createTriangle(PointCloudPosition, 5, 100); 
+   
+  // console.log(PointCloudPosition);
+  let temp = initBuffer(PointCloudPosition, 3);
+  vertexPointCloudPositionBuffer = temp[0]; 
+  let vertexPointCloudPositionNumItems = temp[1];
+  let vertexPointCloudPositionItemSize = temp[2];
+   
 
-  //switchBuffers(programInfo, manVertBuffer, manColorBuffer, manNumItems, manItemSize)
-  gl.bindBuffer(gl.ARRAY_BUFFER, manVertBuffer);
-  gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, manItemSize, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexPointCloudPositionBuffer);
+  gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, vertexPointCloudPositionItemSize, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-
-  //gl.bindBuffer(gl.ARRAY_BUFFER, manColorBuffer);
-  //gl.vertexAttribPointer(gl.getAttribLocation(shaderProgram, 'aVertexColor'), 9, gl.FLOAT, false, 0, 0);
-  //gl.enableVertexAttribArray(gl.getAttribLocation(shaderProgram, 'aVertexColor'));
-
-    
-  gl.bindBuffer(gl.ARRAY_BUFFER, manCoordsBuffer);
-  gl.vertexAttribPointer(programInfo.attribLocations.vertexCoords, manCoordsItemSize, gl.FLOAT, false, 0, 0);
-  gl.enableVertexAttribArray(programInfo.attribLocations.vertexCoords);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-  gl.vertexAttribPointer(programInfo.attribLocations.normals, normalItemSize, gl.FLOAT, false, 0, 0);
-  gl.enableVertexAttribArray(programInfo.attribLocations.normals);
-
-  gl.uniform3fv(programInfo.uniformLocations.lightPosition, [translateX, translateY, translateZ]);
-
-    
-   let i= 0;
-  //sky
-  gl.uniform1i(programInfo.uniformLocations.sampler, i++);
-  gl.uniform1i(programInfo.uniformLocations.inLight, 0);
-
-  let uSkyModelMatrix = identity3dMat();
-  uSkyModelMatrix = MatrixMul(uSkyModelMatrix, scale3dMat(100));
-  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uSkyModelMatrix));
-  drawTriangles(manNumItems)
-    
     
    
-  planets.forEach((el, index) => {
-    gl.uniform1i(programInfo.uniformLocations.sampler, i++);
-    gl.uniform1i(programInfo.uniformLocations.inLight, el.inLight);
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexPointCloudColorBuffer);
+  gl.vertexAttribPointer(programInfo.attribLocations.vertexColor, vertexPointCloudPositionItemSize, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
 
-    let tempX = 0, tempY = 0, tempZ = 0;
-    let date = Date.now() * 0.0001;
-    if(moveAroundSun){
-        tempX = Math.cos(date * el.sunCircuit) * (el.orbit - el.radius);
-        tempZ = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
-        //tempY = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
-    } 
-    else{
-        tempX = el.orbit;
-        tempZ = 0;
-    }
-    planets[index].angle += el.ownRotate;
+    
+  //gl.bindBuffer(gl.ARRAY_BUFFER, vertexPointCloudCoordsBuffer);
+  //gl.vertexAttribPointer(programInfo.attribLocations.vertexCoords, 2, gl.FLOAT, false, 0, 0);
+  //gl.enableVertexAttribArray(programInfo.attribLocations.vertexCoords);
 
-    let uModelMatrix = identity3dMat();
-    uModelMatrix = MatrixMul(uModelMatrix, rotate3d(el.angle));
-    uModelMatrix = MatrixMul(uModelMatrix, scale3dMat(el.radius));
-    uModelMatrix = MatrixMul(uModelMatrix, translate3dMat(tempX, tempY, tempZ));
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uModelMatrix));
+  //gl.bindBuffer(gl.ARRAY_BUFFER, vertexPointCloudNormalBuffer);
+  //gl.vertexAttribPointer(programInfo.attribLocations.normals, vertexPointCloudPositionItemSize, gl.FLOAT, false, 0, 0);
+  //gl.enableVertexAttribArray(programInfo.attribLocations.normals);
 
-    if(el.inLight){
-        let worldInverseMatrix = invert1dMat(uModelMatrix);
-        let worldInverseTransposeMatrix = transpose1dMat(worldInverseMatrix);
-        gl.uniformMatrix4fv(
-        programInfo.uniformLocations.mMatrixInverseTranspose, false,
-        worldInverseTransposeMatrix);
-    }
-    drawTriangles(manNumItems)
-      
-    el.orbits.forEach( (orb, ind) => {
-        gl.uniform1i(programInfo.uniformLocations.sampler, i++);
-        gl.uniform1i(programInfo.uniformLocations.inLight, el.inLight);
 
-        let tempOrbX = 0, tempOrbY = 0, tempOrbZ = 0;
-        let dateOrb = Date.now() * 0.0001;
-        tempOrbX = Math.cos(dateOrb * orb.planetCircuit) * (orb.orbit - orb.radius);
-        tempOrbZ = Math.sin(dateOrb * orb.planetCircuit) * (orb.orbit + orb.radius);
-        //tempOrbY = Math.sin(date * el.sunCircuit) * (el.orbit + el.radius);
+    
 
-        planets[index].orbits[ind].angle += orb.ownRotate;
-
-        let uOrbMatrix = identity3dMat();
-        uOrbMatrix = MatrixMul(uOrbMatrix, rotate3d(orb.angle));
-        uOrbMatrix = MatrixMul(uOrbMatrix, scale3dMat(orb.radius));
-        uOrbMatrix = MatrixMul(uOrbMatrix, translate3dMat(tempX +tempOrbX , tempOrbY, tempZ + tempOrbZ));
-        gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uOrbMatrix));
-
-        
-        if(el.inLight){
-            let worldInverseMatrixOrb = invert1dMat(uOrbMatrix);
-            let worldInverseTransposeMatrixOrb = transpose1dMat(worldInverseMatrixOrb);
-
-            gl.uniformMatrix4fv(
-            programInfo.uniformLocations.mMatrixInverseTranspose, false,
-            worldInverseTransposeMatrixOrb);
-        }
-        drawTriangles(manNumItems)  
-     })
-  })
+  let uSkyModelMatrix = identity3dMat();
+  uSkyModelMatrix = MatrixMul(uSkyModelMatrix, scale3dMat(0.001));
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uSkyModelMatrix));
+  drawPoints(vertexPointCloudPositionItemSize)
       
 }
 
 function drawTriangles(size) {
   gl.drawArrays(gl.TRIANGLES, 0, size);
+}
+
+function drawPoints(size) {
+  gl.drawArrays(gl.POINTS, 0, size);
 }
 
 function initBuffer(data, size) {
@@ -537,17 +393,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (e.code == "ArrowRight") translateX += 0.5;
     if (e.code == "Equal") translateZ += 0.5;
     if (e.code == "Minus") translateZ -= 0.5;
-      
-    if(e.code == "Space") moveAroundSun = !moveAroundSun;  
 
-          let i=1;
-    planets.forEach(el => {
-      if(e.code == `Digit${i++}`){
-         translateVX = el.orbit;  
-         translateVZ = -10;  
-      }
- 
-    });
   })
   main();
 
