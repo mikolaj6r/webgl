@@ -3,7 +3,7 @@ import {
   translate3dMat, identity3dMat, rotateX, rotateY, rotateZ, rotate3d, createTexture
 } from './utils.js'
 
-const yellowClr = [1.0, 1.0, 0.0];
+const yellowClr = [0.5, 0.6, 0.9];
 export function createSphere(R = 5, n = 32, m = 32) { // radius, num in width, num in height
 
   let position = [], colors = [], coords = [], normals = [];
@@ -91,14 +91,19 @@ export function createSphere(R = 5, n = 32, m = 32) { // radius, num in width, n
   return [position, colors, coords, normals];
 }
 
+ function getRandomInt(min, max){
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max-min)) + min;
+}
 
 export function genPointCloud(n){
     let pos = [];
     for( let i=0; i<n; i++ ){
         //position
-        pos.push( Math.random()*3.5 ); //x
-        pos.push( Math.random()*3.5 ); //y
-        pos.push( Math.random()*3.5 ); //z
+        pos.push( getRandomInt(-5, 5 )); //x
+        pos.push( getRandomInt(-3, 3 ) ); //y
+        pos.push( getRandomInt(-6, 6 ) ); //z
     }
     return pos;
 
@@ -108,9 +113,9 @@ export function genPointCloud(n){
 export function genPointColors(n){
     let color = [];
     for( let i=0; i<n; i++ ){
-        color.push( ...[yellowClr, yellowClr, yellowClr] ); //x  
-        color.push( ...[yellowClr, yellowClr, yellowClr] ); //x  
-        color.push( ...[yellowClr, yellowClr, yellowClr] ); //x  
+        color.push( ...[  Math.random() , Math.random(), Math.random()   ] ); //x  
+        color.push( ...[  Math.random() , Math.random(), Math.random()   ] ); //x 
+        color.push( ...[  Math.random() , Math.random(), Math.random()   ] ); //x 
     }
     return color;
 
@@ -137,18 +142,18 @@ export function updatePosition(pos, vel, n ,dt){
         pos[i*3+1] += vel[i*3+1] * dt;
         pos[i*3+2] += vel[i*3+2] * dt;
     }
-    //console.log(pos);
     return pos;
 }
 
 
 
 export function createTriangle(pos, n, s){
+    
     let vertex = [];
     for(let i=0; i<n; i++){
-        vertex.push( ...[ pos[3*i+0]-s, pos[3*i+1], pos[3*i+2]-s ] );
-        vertex.push( ...[ pos[3*i+0]+s, pos[3*i+1], pos[3*i+2]-s ] );
-        vertex.push( ...[ pos[3*i+0],   pos[3*i+1], pos[3*i+2]+s ] );
+        vertex.push( ...[ pos[3*i+0]-s, pos[3*i+1]+ getRandomInt(0, 2)*0.1, pos[3*i+2]-s ] );
+        vertex.push( ...[ pos[3*i+0]+s, pos[3*i+1]+s, pos[3*i+2]-s ] );
+        vertex.push( ...[ pos[3*i+0]+s,   pos[3*i+1]+s, pos[3*i+2]+s ] );
     }
     return vertex;
 
@@ -158,9 +163,9 @@ export function createVelocity(n){
     let pos = [];
     for( let i=0; i<n; i++ ){
         //position
-        pos.push( Math.random()*3.5 ); //x
-        pos.push( Math.random()*3.5 ); //y
-        pos.push( Math.random()*3.5 ); //z
+        pos.push( getRandomInt(-10, 10 )*1); //x
+        pos.push( getRandomInt(-10, 10 )*1 ); //y
+        pos.push( getRandomInt(-10, 10 )*1 ); //z
     }
     return pos;    
 }

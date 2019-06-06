@@ -20,16 +20,22 @@ import {
 import { createSphere, genPointCloud, genPointColors, genPointNormals, genPointCoords, updatePosition,
        createTriangle, createVelocity} from './geometry.js'
 
+import colors from './colors.js'
+import { humanPosition, humanColor, humanCoords} from './human.js'
+
 var gl;
 var shaderProgram;
 var uPMatrix;
 
-var manVertBuffer;
-var manColorBuffer;
-var manItemSize;
-var manNumItems;
-var manCoordsBuffer;
-var manCoordsItemSize;
+
+let humanPositionBuffer;
+let humanColorBuffer;
+let humanCoordsBuffer;
+let humanNumItems;
+let humanItemSize;
+
+
+
 var normalBuffer;
 var normalItemSize;
 
@@ -40,7 +46,7 @@ var vertexPointCloudNormalBuffer;
 
   let PointCloudPosition;
 
-let prevTime;
+let prevTime =  Date.now();
 
 var programInfo;
 
@@ -50,15 +56,15 @@ var angleVX = 180.0;
 
 var translateX = 0.0;
 var translateY = 0.0;
-var translateZ = -3.0;
-var translateVX = 50.0;
+var translateZ = 0.0;
+var translateVX = 0.0;
 var translateVY = 0.0;
-var translateVZ = -120.0;
+var translateVZ = -10.0;
 
 let textures = [];
 const yellowClr = [1, 1, 0];
-let moveAroundSun = 1;
 
+let cloudSize= 500;
 
 function main() {
   const canv = document.getElementById("canvas");
@@ -101,11 +107,10 @@ function main() {
   const vsSource = `
     precision mediump float;
 
-    //attribute highp vec3 aVertexColor;
+    attribute highp vec3 aVertexColor;
     attribute highp vec3 aVertexPosition;
-    attribute vec2 aVertexCoords;
-    attribute vec3 aNormals;
-    attribute vec3 aVertexColor;
+    //attribute vec2 aVertexCoords;
+    //attribute vec3 aNormals;
 
     uniform highp mat4 uMMatrix;// uniforms are read-only and shared vs and fs
     uniform highp mat4 uPMatrix;
@@ -114,16 +119,17 @@ function main() {
     uniform bool inLight;
 
     varying vec2 vTexUV; // varying are shared vs and fs
-    varying vec3 vNormal;
+    //varying vec3 vNormal;
     varying vec3 vColor;
 
     uniform vec3 uLightPosition;
     uniform mat4 uMMatrixInverseTranspose;
 
-    varying vec3 v_surfaceToLight;
+    //varying vec3 v_surfaceToLight;
 
     void main(){
         gl_Position = uPMatrix * uVMatrix  * uMMatrix * vec4(aVertexPosition, 1.0);
+        //gl_PointSize = 3.0;
         //vTexUV = aVertexCoords;
               
         vColor = aVertexColor;
@@ -199,9 +205,9 @@ function main() {
 
   // create cloud point
   {
-    let temp1 = genPointColors(5);
-    let temp2 = genPointCoords(5);
-    let temp3 = genPointNormals(5);
+    let temp1 = genPointColors(cloudSize);
+    let temp2 = genPointCoords(cloudSize);
+    let temp3 = genPointNormals(cloudSize);
       
     vertexPointCloudColor.push(...temp1);
     vertexPointCloudCoords.push(...temp2);
@@ -210,27 +216,40 @@ function main() {
 
     
   let temp;
+    
+    
+    
+  temp = initBuffer(humanPosition, 3);
+  humanPositionBuffer = temp[0]; humanNumItems = temp[1]; humanItemSize = temp[2];  
+    
+    
+  temp = initBuffer(humanColor, 3);
+  humanColorBuffer = temp[0];
+    
+
+  temp = initBuffer(humanCoords, 2);
+  humanCoordsBuffer = temp[0]; 
+    
+
 
   temp = initBuffer(vertexPointCloudColor, 3);
-  vertexPointCloudColorBuffer = temp[0]; manNumItems = temp[1]; manItemSize = temp[2];
+  vertexPointCloudColorBuffer = temp[0];
     
 
   temp = initBuffer(vertexPointCloudCoords, 2);
-  vertexPointCloudCoordsBuffer = temp[0]; manCoordsItemSize = temp[2];
+  vertexPointCloudCoordsBuffer = temp[0]; 
 
   temp = initBuffer(vertexPointCloudNormals, 3);
   vertexPointCloudNormalBuffer = temp[0];
 
       
-  temp = genPointCloud(5);
-  PointCloudPosition = temp;
+  PointCloudPosition = genPointCloud(cloudSize);
+
+  
+  vertexPointCloudPosition = createTriangle(PointCloudPosition, cloudSize, -2); 
     
-  temp = createTriangle(PointCloudPosition, 5, -2); 
-  vertexPointCloudPosition = temp;  
+  let PointCloudVelocity  = createVelocity(cloudSize);
     
-    
-  temp = createVelocity(5);
-  let PointCloudVelocity = temp;
     
   gl.activeTexture(gl.TEXTURE0);
   const humanTexture = createTexture(gl, "texture.png");
@@ -247,7 +266,7 @@ function animate() {
 function render() {
 
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-  gl.clearColor(0.0, 0.0, 0.0, 0.9);
+  gl.clearColor(...colors.red, 0.7);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
   gl.useProgram(shaderProgram);
@@ -265,18 +284,23 @@ function render() {
   gl.uniform3fv(programInfo.uniformLocations.lightPosition, [translateX, translateY, translateZ]); 
     
     
+    
+    
+    
+    
+    
+    
+    
    //update
   let now = Date.now();
-  let dt = now - prevTime;
+  let dt = (now - prevTime) * 0.001;
   prevTime = now;
-  let velocity = createVelocity(5);
-  PointCloudPosition = updatePosition(PointCloudPosition, velocity, 5, dt);
-  console.log(PointCloudPosition);
-   //create
-  let vertexPointCloudPosition = createTriangle(PointCloudPosition, 5, 100); 
+  let velocity = createVelocity(cloudSize);  
+  PointCloudPosition = updatePosition(PointCloudPosition, velocity, cloudSize, dt);
+    
+  let vertexPointCloudPosition = createTriangle(PointCloudPosition, cloudSize, 1); 
    
-  // console.log(PointCloudPosition);
-  let temp = initBuffer(PointCloudPosition, 3);
+  let temp = initBuffer(vertexPointCloudPosition, 3);
   vertexPointCloudPositionBuffer = temp[0]; 
   let vertexPointCloudPositionNumItems = temp[1];
   let vertexPointCloudPositionItemSize = temp[2];
@@ -304,9 +328,9 @@ function render() {
     
 
   let uSkyModelMatrix = identity3dMat();
-  uSkyModelMatrix = MatrixMul(uSkyModelMatrix, scale3dMat(0.001));
+  uSkyModelMatrix = MatrixMul(uSkyModelMatrix, scale3dMat(1));
   gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uSkyModelMatrix));
-  drawPoints(vertexPointCloudPositionItemSize)
+  drawTriangles(vertexPointCloudPositionNumItems)
       
 }
 
