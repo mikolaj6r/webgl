@@ -131,7 +131,9 @@ export function genPointNormals(n){
 export function genPointCoords(n){
     let coords = [];
     for( let i=0; i<n; i++ ){
-        coords.push( ...[Math.random()*3.5, Math.random()*3.5 ] ); //x  
+        coords.push( ...[Math.random(), Math.random() ] ); //x  
+        coords.push( ...[Math.random(), Math.random() ] ); //x  
+        coords.push( ...[Math.random(), Math.random() ] ); //x  
     }
     return coords;
 
