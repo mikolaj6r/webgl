@@ -16,11 +16,13 @@ import {
   translate3dMat, identity3dMat, rotateX, rotateY, rotateZ, rotate3d, createTexture
 } from './utils.js'
 
-import { createSphere, genPointCloud, genPointColors, genPointNormals, genPointCoords, updatePosition,
-       createTriangle, createVelocity} from './geometry.js'
+import {
+  createSphere, genPointCloud, genPointColors, genPointNormals, genPointCoords, updatePosition,
+  createTriangle, createVelocity
+} from './geometry.js'
 
 import colors from './colors.js'
-import { humanPosition, humanColor, humanCoords} from './human.js'
+import { humanPosition, humanColor, humanCoords } from './human.js'
 
 var gl;
 var shaderProgram;
@@ -45,7 +47,7 @@ var vertexPointCloudNormalBuffer;
 
 let PointCloudPosition;
 
-let prevTime =  Date.now();
+let prevTime = Date.now();
 
 var programInfo;
 
@@ -62,20 +64,20 @@ var translateVZ = -30.0;
 
 let textures = [];
 
-let cloudSize= 500;
+let cloudSize = 3000;
 
 function main() {
   const canv = document.getElementById("canvas");
   try {
     gl = canv.getContext("experimental-webgl");
-  } catch (e) { 
-      alert("webgl not found");
+  } catch (e) {
+    alert("webgl not found");
   }
 
 
   canv.width = document.documentElement.clientWidth;
   canv.height = document.documentElement.clientHeight;
-    
+
   const aspect = canvas.clientWidth / canvas.clientHeight;
   let fov = 45.0 * Math.PI / 180.0;
   let zFar = 2000.0;
@@ -202,50 +204,50 @@ function main() {
       mMatrixInverseTranspose: gl.getUniformLocation(shaderProgram, 'uMMatrixInverseTranspose'),
     },
   };
-    
+
   var vertexPointCloudPosition = [];
   var vertexPointCloudCoords = [];
   var vertexPointCloudColor = [];
   var vertexPointCloudNormals = [];
 
   // create cloud point
-  vertexPointCloudColor.push(...genPointColors(cloudSize));
+  vertexPointCloudColor.push(...genPointColors(cloudSize, colors.blue));
   vertexPointCloudCoords.push(...genPointCoords(cloudSize));
   vertexPointCloudNormals.push(...genPointNormals(cloudSize));
-    
-    
+
+
   let temp;
-      
+
   temp = initBuffer(humanPosition, 3);
-  humanPositionBuffer = temp[0]; humanNumItems = temp[1]; humanItemSize = temp[2];  
-    
-    
+  humanPositionBuffer = temp[0]; humanNumItems = temp[1]; humanItemSize = temp[2];
+
+
   temp = initBuffer(humanColor, 3);
   humanColorBuffer = temp[0];
-    
+
 
   temp = initBuffer(humanCoords, 2);
-  humanCoordsBuffer = temp[0]; 
-    
+  humanCoordsBuffer = temp[0];
+
 
 
   temp = initBuffer(vertexPointCloudColor, 3);
   vertexPointCloudColorBuffer = temp[0];
-    
+
 
   temp = initBuffer(vertexPointCloudCoords, 2);
-  vertexPointCloudCoordsBuffer = temp[0]; 
+  vertexPointCloudCoordsBuffer = temp[0];
 
   temp = initBuffer(vertexPointCloudNormals, 3);
   vertexPointCloudNormalBuffer = temp[0];
 
-      
+
   PointCloudPosition = genPointCloud(cloudSize);
-    
+
   gl.activeTexture(gl.TEXTURE0);
   const humanTexture = createTexture(gl, "texture.png");
   textures.push(humanTexture);
-    
+
   requestAnimationFrame(animate);
 }
 
@@ -257,7 +259,7 @@ function animate() {
 function render() {
 
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-  gl.clearColor(...colors.red, 0.7);
+  gl.clearColor(...colors.white, 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
   gl.useProgram(shaderProgram);
@@ -272,66 +274,66 @@ function render() {
   //pass matrices
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, new Float32Array(uPMatrix));
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, new Float32Array(uVMatrix));
-  gl.uniform3fv(programInfo.uniformLocations.lightPosition, [translateX, translateY, translateZ]); 
-    
-    
-        
+  gl.uniform3fv(programInfo.uniformLocations.lightPosition, [translateX, translateY, translateZ]);
+
+
+
   //draw human
   gl.bindBuffer(gl.ARRAY_BUFFER, humanPositionBuffer);
   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, humanItemSize, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-    
-   
+
+
   gl.bindBuffer(gl.ARRAY_BUFFER, humanColorBuffer);
   gl.vertexAttribPointer(programInfo.attribLocations.vertexColor, humanItemSize, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
 
-    
+
   gl.bindBuffer(gl.ARRAY_BUFFER, humanCoordsBuffer);
   gl.vertexAttribPointer(programInfo.attribLocations.vertexCoords, 2, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(programInfo.attribLocations.vertexCoords);
-    
+
 
   gl.uniform1i(programInfo.uniformLocations.sampler, 0);
   gl.uniform1i(programInfo.uniformLocations.useTexture, 1);
-    
+
   let uHumanModelMatrix = identity3dMat();
   uHumanModelMatrix = MatrixMul(uHumanModelMatrix, rotateY(0));
   gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uHumanModelMatrix));
   drawTriangles(humanNumItems)
-    
-    
-  
-    
-    
+
+
+
+
+
   //draw cloud
   gl.uniform1i(programInfo.uniformLocations.useTexture, 0);
   //update
-    
+
   let now = Date.now();
-  let dt = (now - prevTime) * 0.001;
+  let dt = (now - prevTime) * 0.01;
   prevTime = now;
-  let velocity = createVelocity(cloudSize);  
+  let velocity = createVelocity(cloudSize);
   PointCloudPosition = updatePosition(PointCloudPosition, velocity, cloudSize, dt);
-    
-  let vertexPointCloudPosition = createTriangle(PointCloudPosition, cloudSize, 1); 
-   
+
+  let vertexPointCloudPosition = createTriangle(PointCloudPosition, cloudSize, 1);
+
   let temp = initBuffer(vertexPointCloudPosition, 3);
-  vertexPointCloudPositionBuffer = temp[0]; 
+  vertexPointCloudPositionBuffer = temp[0];
   let vertexPointCloudPositionNumItems = temp[1];
   let vertexPointCloudPositionItemSize = temp[2];
-   
+
 
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexPointCloudPositionBuffer);
   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, vertexPointCloudPositionItemSize, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-    
-   
+
+
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexPointCloudColorBuffer);
   gl.vertexAttribPointer(programInfo.attribLocations.vertexColor, vertexPointCloudPositionItemSize, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
 
-    
+
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexPointCloudCoordsBuffer);
   gl.vertexAttribPointer(programInfo.attribLocations.vertexCoords, 2, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray(programInfo.attribLocations.vertexCoords);
@@ -341,13 +343,13 @@ function render() {
   //gl.enableVertexAttribArray(programInfo.attribLocations.normals);
 
 
-   
+
   let uCloudModelMatrix = identity3dMat();
-  uCloudModelMatrix = MatrixMul(uCloudModelMatrix, scale3dMat(1));
+  uCloudModelMatrix = MatrixMul(uCloudModelMatrix, scale3dMat(0.08));
   gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, new Float32Array(uCloudModelMatrix));
-    
+
   drawTriangles(vertexPointCloudPositionNumItems)
-      
+
 }
 
 function drawTriangles(size) {
